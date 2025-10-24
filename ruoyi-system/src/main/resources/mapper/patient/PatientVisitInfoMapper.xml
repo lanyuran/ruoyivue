@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.patient.mapper.PatientVisitInfoMapper">
+    
+    <resultMap type="PatientVisitInfo" id="PatientVisitInfoResult">
+        <result property="visitId"    column="visit_id"    />
+        <result property="name"    column="name"    />
+        <result property="gender"    column="gender"    />
+        <result property="birthDate"    column="birth_date"    />
+        <result property="visitTime"    column="visit_time"    />
+        <result property="hospital"    column="hospital"    />
+        <result property="medicalRecordNo"    column="medical_record_no"    />
+        <result property="parentName"    column="parent_name"    />
+        <result property="phone"    column="phone"    />
+        <result property="pastMedication"    column="past_medication"    />
+        <result property="chiefComplaint"    column="chief_complaint"    />
+        <result property="mainSymptom"    column="main_symptom"    />
+        <result property="comorbidity"    column="comorbidity"    />
+        <result property="physicalExam"    column="physical_exam"    />
+        <result property="tonguePulse"    column="tongue_pulse"    />
+        <result property="allergenTotalIge"    column="allergen_total_ige"    />
+        <result property="allergenSpecificIge"    column="allergen_specific_ige"    />
+        <result property="tcmDiagnosis"    column="tcm_diagnosis"    />
+        <result property="tcmTreatment"    column="tcm_treatment"    />
+        <result property="tcmExternalPrescription"    column="tcm_external_prescription"    />
+    </resultMap>
+
+    <sql id="selectPatientVisitInfoVo">
+        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription from patient_visit_info
+    </sql>
+
+    <select id="selectPatientVisitInfoList" parameterType="PatientVisitInfo" resultMap="PatientVisitInfoResult">
+        <include refid="selectPatientVisitInfoVo"/>
+        <where>  
+            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
+            <if test="hospital != null  and hospital != ''"> and hospital like concat('%', #{hospital}, '%')</if>
+            <if test="medicalRecordNo != null  and medicalRecordNo != ''"> and medical_record_no like concat('%', #{medicalRecordNo}, '%')</if>
+            <if test="phone != null  and phone != ''"> and phone like concat('%', #{phone}, '%')</if>
+            <if test="mainSymptom != null  and mainSymptom != ''"> and main_symptom like concat('%', #{mainSymptom}, '%')</if>
+        </where>
+    </select>
+    
+    <select id="selectPatientVisitInfoByVisitId" parameterType="Long" resultMap="PatientVisitInfoResult">
+        <include refid="selectPatientVisitInfoVo"/>
+        where visit_id = #{visitId}
+    </select>
+
+    <insert id="insertPatientVisitInfo" parameterType="PatientVisitInfo" useGeneratedKeys="true" keyProperty="visitId">
+        insert into patient_visit_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">name,</if>
+            <if test="gender != null and gender != ''">gender,</if>
+            <if test="birthDate != null">birth_date,</if>
+            <if test="visitTime != null">visit_time,</if>
+            <if test="hospital != null and hospital != ''">hospital,</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no,</if>
+            <if test="parentName != null">parent_name,</if>
+            <if test="phone != null and phone != ''">phone,</if>
+            <if test="pastMedication != null">past_medication,</if>
+            <if test="chiefComplaint != null and chiefComplaint != ''">chief_complaint,</if>
+            <if test="mainSymptom != null and mainSymptom != ''">main_symptom,</if>
+            <if test="comorbidity != null">comorbidity,</if>
+            <if test="physicalExam != null and physicalExam != ''">physical_exam,</if>
+            <if test="tonguePulse != null and tonguePulse != ''">tongue_pulse,</if>
+            <if test="allergenTotalIge != null">allergen_total_ige,</if>
+            <if test="allergenSpecificIge != null">allergen_specific_ige,</if>
+            <if test="tcmDiagnosis != null and tcmDiagnosis != ''">tcm_diagnosis,</if>
+            <if test="tcmTreatment != null and tcmTreatment != ''">tcm_treatment,</if>
+            <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">tcm_external_prescription,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="gender != null and gender != ''">#{gender},</if>
+            <if test="birthDate != null">#{birthDate},</if>
+            <if test="visitTime != null">#{visitTime},</if>
+            <if test="hospital != null and hospital != ''">#{hospital},</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">#{medicalRecordNo},</if>
+            <if test="parentName != null">#{parentName},</if>
+            <if test="phone != null and phone != ''">#{phone},</if>
+            <if test="pastMedication != null">#{pastMedication},</if>
+            <if test="chiefComplaint != null and chiefComplaint != ''">#{chiefComplaint},</if>
+            <if test="mainSymptom != null and mainSymptom != ''">#{mainSymptom},</if>
+            <if test="comorbidity != null">#{comorbidity},</if>
+            <if test="physicalExam != null and physicalExam != ''">#{physicalExam},</if>
+            <if test="tonguePulse != null and tonguePulse != ''">#{tonguePulse},</if>
+            <if test="allergenTotalIge != null">#{allergenTotalIge},</if>
+            <if test="allergenSpecificIge != null">#{allergenSpecificIge},</if>
+            <if test="tcmDiagnosis != null and tcmDiagnosis != ''">#{tcmDiagnosis},</if>
+            <if test="tcmTreatment != null and tcmTreatment != ''">#{tcmTreatment},</if>
+            <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">#{tcmExternalPrescription},</if>
+         </trim>
+    </insert>
+
+    <update id="updatePatientVisitInfo" parameterType="PatientVisitInfo">
+        update patient_visit_info
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="gender != null and gender != ''">gender = #{gender},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="visitTime != null">visit_time = #{visitTime},</if>
+            <if test="hospital != null and hospital != ''">hospital = #{hospital},</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no = #{medicalRecordNo},</if>
+            <if test="parentName != null">parent_name = #{parentName},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="pastMedication != null">past_medication = #{pastMedication},</if>
+            <if test="chiefComplaint != null and chiefComplaint != ''">chief_complaint = #{chiefComplaint},</if>
+            <if test="mainSymptom != null and mainSymptom != ''">main_symptom = #{mainSymptom},</if>
+            <if test="comorbidity != null">comorbidity = #{comorbidity},</if>
+            <if test="physicalExam != null and physicalExam != ''">physical_exam = #{physicalExam},</if>
+            <if test="tonguePulse != null and tonguePulse != ''">tongue_pulse = #{tonguePulse},</if>
+            <if test="allergenTotalIge != null">allergen_total_ige = #{allergenTotalIge},</if>
+            <if test="allergenSpecificIge != null">allergen_specific_ige = #{allergenSpecificIge},</if>
+            <if test="tcmDiagnosis != null and tcmDiagnosis != ''">tcm_diagnosis = #{tcmDiagnosis},</if>
+            <if test="tcmTreatment != null and tcmTreatment != ''">tcm_treatment = #{tcmTreatment},</if>
+            <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">tcm_external_prescription = #{tcmExternalPrescription},</if>
+        </trim>
+        where visit_id = #{visitId}
+    </update>
+
+    <delete id="deletePatientVisitInfoByVisitId" parameterType="Long">
+        delete from patient_visit_info where visit_id = #{visitId}
+    </delete>
+
+    <delete id="deletePatientVisitInfoByVisitIds" parameterType="String">
+        delete from patient_visit_info where visit_id in 
+        <foreach item="visitId" collection="array" open="(" separator="," close=")">
+            #{visitId}
+        </foreach>
+    </delete>
+</mapper>
