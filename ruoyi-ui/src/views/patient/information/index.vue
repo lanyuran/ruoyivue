@@ -46,9 +46,19 @@
           plain
           icon="el-icon-plus"
           size="mini"
+          @click="handleExcelImport"
+          v-hasPermi="['patient:information:excel_add']"
+        >excel导入</el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="el-icon-plus"
+          size="mini"
           @click="handleAdd"
           v-hasPermi="['patient:information:add']"
-        >新增</el-button>
+        >手动新增</el-button>
       </el-col>
       <el-col :span="1.5">
         <el-button
@@ -134,7 +144,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <pagination
       v-show="total>0"
       :total="total"
@@ -365,6 +375,10 @@ export default {
       this.reset()
       this.open = true
       this.title = "添加鼻炎患者就诊信息主（包含文档中所有字段）"
+    },
+    /** excel导入按钮操作 */
+    handleExcelImport() {
+
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
