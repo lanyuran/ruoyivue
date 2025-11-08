@@ -1,6 +1,9 @@
 package com.ruoyi.patient.controller;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletResponse;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.patient.domain.PatientVisitInfo;
+import com.ruoyi.patient.domain.PatientVisitExportVO;
 import com.ruoyi.patient.service.IPatientVisitInfoService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -52,12 +56,41 @@ public class PatientVisitInfoController extends BaseController
     @PreAuthorize("@ss.hasPermi('patient:information:export')")
     @Log(title = "鼻炎患者就诊信息主（包含文档中所有字段）", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
-    public void export(HttpServletResponse response, PatientVisitInfo patientVisitInfo)
-    {
+    public void export(HttpServletResponse response, PatientVisitInfo patientVisitInfo) {
+        // 查询数据库
         List<PatientVisitInfo> list = patientVisitInfoService.selectPatientVisitInfoList(patientVisitInfo);
-        ExcelUtil<PatientVisitInfo> util = new ExcelUtil<PatientVisitInfo>(PatientVisitInfo.class);
-        util.exportExcel(response, list, "鼻炎患者就诊信息主（包含文档中所有字段）数据");
+
+        // 转换为导出 VO
+        List<PatientVisitExportVO> exportList = list.stream().map(p -> {
+            PatientVisitExportVO vo = new PatientVisitExportVO();
+            vo.setName(p.getName());
+            vo.setGender(p.getGender());
+            vo.setBirthDate(p.getBirthDate());
+            vo.setVisitTime(p.getVisitTime());
+            vo.setHospital(p.getHospital());
+            vo.setMedicalRecordNo(p.getMedicalRecordNo());
+            vo.setParentName(p.getParentName());
+            vo.setPhone(p.getPhone());
+            vo.setPastMedication(p.getPastMedication());
+            vo.setChiefComplaint(p.getChiefComplaint());
+            vo.setMainSymptom(p.getMainSymptom());
+            vo.setComorbidity(p.getComorbidity());
+            vo.setPhysicalExam(p.getPhysicalExam());
+            vo.setTonguePulse(p.getTonguePulse());
+            vo.setAllergenTotalIge(p.getAllergenTotalIge());
+            vo.setAllergenSpecificIge(p.getAllergenSpecificIge());
+            vo.setTcmDiagnosis(p.getTcmDiagnosis());
+            vo.setTcmTreatment(p.getTcmTreatment());
+            vo.setTcmExternalPrescription(p.getTcmExternalPrescription());
+            return vo;
+        }).collect(Collectors.toList());
+
+        // 导出 Excel
+        ExcelUtil<PatientVisitExportVO> util = new ExcelUtil<>(PatientVisitExportVO.class);
+        util.exportExcel(response, exportList, "鼻炎患者就诊信息主数据");
     }
+
+
 
     /**
      * 获取鼻炎患者就诊信息主（包含文档中所有字段）详细信息
