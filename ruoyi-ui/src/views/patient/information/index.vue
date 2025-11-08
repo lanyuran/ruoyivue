@@ -174,7 +174,7 @@
             v-model="form.birthDate"
             type="date"
             value-format="yyyy-MM-dd"
-            placeholder="请选择患者出生日期" :disabled="isReadonly">
+            placeholder="请选择患者出生日期":disabled="isReadonly">
           </el-date-picker>
         </el-form-item>
         <el-form-item label="就诊时间" prop="visitTime">
@@ -379,6 +379,7 @@ export default {
     /** 新增按钮操作 */
     handleAdd() {
       this.reset()
+      this.setFormReadonly(false);
       this.open = true
       this.title = "添加鼻炎患者就诊信息主（包含文档中所有字段）"
     },
