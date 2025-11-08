@@ -5,6 +5,7 @@ import java.util.Date;
 
 import com.ruoyi.common.annotation.Excel;
 
+//导出专用VO类
 public class PatientVisitExportVO{
 
     @Excel(name="患者姓名")
