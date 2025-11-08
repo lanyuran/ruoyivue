@@ -129,4 +129,5 @@ public class SysDeptController extends BaseController
         deptService.checkDeptDataScope(deptId);
         return toAjax(deptService.deleteDeptById(deptId));
     }
+
 }

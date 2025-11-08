@@ -101,4 +101,9 @@ public class PatientVisitInfoController extends BaseController
     {
         return toAjax(patientVisitInfoService.deletePatientVisitInfoByVisitIds(visitIds));
     }
+    /**
+     * 获取鼻炎患者就诊信息主（包含文档中所有字段）详细信息
+     */
+
+
 }

@@ -92,6 +92,16 @@
           v-hasPermi="['patient:information:export']"
         >导出</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="el-icon-view"
+          size="mini"
+          @click="handleDetail"
+          v-hasPermi="['patient:information:query']"
+        >详细</el-button>
+      </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -164,7 +174,7 @@
             v-model="form.birthDate"
             type="date"
             value-format="yyyy-MM-dd"
-            placeholder="请选择患者出生日期">
+            placeholder="请选择患者出生日期" :disabled="isReadonly">
           </el-date-picker>
         </el-form-item>
         <el-form-item label="就诊时间" prop="visitTime">
@@ -172,7 +182,7 @@
             v-model="form.visitTime"
             type="date"
             value-format="yyyy-MM-dd"
-            placeholder="请选择就诊时间">
+            placeholder="请选择就诊时间"   :disabled="isReadonly">
           </el-date-picker>
         </el-form-item>
         <el-form-item label="就诊医院名称" prop="hospital">
@@ -251,6 +261,7 @@ export default {
       title: "",
       // 是否显示弹出层
       open: false,
+      isReadonly:false,
       // 查询参数
       queryParams: {
         pageNum: 1,
@@ -323,11 +334,6 @@ export default {
         this.loading = false
       })
     },
-    // 取消按钮
-    cancel() {
-      this.open = false
-      this.reset()
-    },
     // 表单重置
     reset() {
       this.form = {
@@ -388,28 +394,41 @@ export default {
         this.form = response.data
         this.open = true
         this.title = "修改鼻炎患者就诊信息主（包含文档中所有字段）"
+        // 在DOM更新后清除只读模式
+        this.$nextTick(() => {
+          this.setFormReadonly(false);
+        });
       })
     },
+
+    /** 提交按钮 */
     /** 提交按钮 */
     submitForm() {
+      // 如果是查看详细信息模式，直接关闭对话框
+      if (this.title === "患者就诊详细信息") {
+        this.open = false;
+        return;
+      }
+
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (this.form.visitId != null) {
             updateInformation(this.form).then(response => {
-              this.$modal.msgSuccess("修改成功")
-              this.open = false
-              this.getList()
-            })
+              this.$modal.msgSuccess("修改成功");
+              this.open = false;
+              this.getList();
+            });
           } else {
             addInformation(this.form).then(response => {
-              this.$modal.msgSuccess("新增成功")
-              this.open = false
-              this.getList()
-            })
+              this.$modal.msgSuccess("新增成功");
+              this.open = false;
+              this.getList();
+            });
           }
         }
-      })
+      });
     },
+
     /** 删除按钮操作 */
     handleDelete(row) {
       const visitIds = row.visitId || this.ids
@@ -425,7 +444,95 @@ export default {
       this.download('patient/information/export', {
         ...this.queryParams
       }, `information_${new Date().getTime()}.xlsx`)
+    },
+// 查看详细
+    /** 查看详细信息 */
+    /** 查看详细 */
+    handleDetail(row) {
+      const visitId = row.visitId || (this.ids.length > 0 ? this.ids[0] : null);
+      if (!visitId) {
+        this.$modal.alertWarning("请至少选择一条记录");
+        return;
+      }
+
+      getInformation(visitId).then(response => {
+        this.form = response.data;
+        this.title = "患者就诊详细信息";
+        this.open = true;
+        // 设置表单为只读模式
+        this.setFormReadonly(true);
+      })
+    },
+    // 取消按钮
+    cancel() {
+      this.open = false
+      this.reset()
+      // 重置表单只读状态
+      this.$nextTick(() => {
+        this.setFormReadonly(false);
+      });
+    },
+    // setFormReadonly(readonly) {
+    //   this.$nextTick(() => {
+    //     const form = this.$refs["form"];
+    //     if (form) {
+    //       // 处理输入框和文本域
+    //       const inputs = form.$el.querySelectorAll("input, textarea");
+    //       inputs.forEach(input => {
+    //         if (readonly) {
+    //           input.setAttribute("readonly", "readonly");
+    //           input.classList.add("readonly-disabled");
+    //         } else {
+    //           input.removeAttribute("readonly");
+    //           input.classList.remove("readonly-disabled");
+    //         }
+    //       });
+    //
+    //       // 特殊处理日期选择器
+    //       const datePickers = form.$el.querySelectorAll(".el-date-editor");
+    //       datePickers.forEach(picker => {
+    //         const input = picker.querySelector("input");
+    //         if (readonly) {
+    //           // 完全禁用日期选择器
+    //           picker.classList.add("readonly-datepicker");
+    //           if (input) {
+    //             input.setAttribute("readonly", "readonly");
+    //             input.classList.add("readonly-disabled");
+    //           }
+    //           // 禁用整个日期选择器组件
+    //           picker.setAttribute("data-readonly", "true");
+    //           // 通过Vue实例直接设置disabled属性
+    //           if (picker.__vue__) {
+    //             picker.__vue__.disabled = true;
+    //             // 如果是picker组件，还需要设置picker的disabled属性
+    //             if (picker.__vue__.picker) {
+    //               picker.__vue__.picker.disabled = true;
+    //             }
+    //           }
+    //         } else {
+    //           picker.classList.remove("readonly-datepicker");
+    //           if (input) {
+    //             input.removeAttribute("readonly");
+    //             input.classList.remove("readonly-disabled");
+    //           }
+    //           picker.removeAttribute("data-readonly");
+    //           // 启用日期选择器组件
+    //           if (picker.__vue__) {
+    //             picker.__vue__.disabled = false;
+    //             if (picker.__vue__.picker) {
+    //               picker.__vue__.picker.disabled = false;
+    //             }
+    //           }
+    //         }
+    //       });
+    //     }
+    //   });
+    // }
+    setFormReadonly(readonly) {
+      this.isReadonly = readonly;
     }
+
+
   }
 }
 </script>

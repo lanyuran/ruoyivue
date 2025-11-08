@@ -112,4 +112,8 @@ public class ${ClassName}Controller extends BaseController
     {
         return toAjax(${className}Service.delete${ClassName}By${pkColumn.capJavaField}s(${pkColumn.javaField}s));
     }
+    /**
+     * 详细${functionName}
+     */
+
 }
