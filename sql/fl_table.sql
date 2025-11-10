@@ -76,18 +76,38 @@ CREATE TABLE `patient_visit_info` (
 LOCK TABLES `patient_visit_info` WRITE;
 /*!40000 ALTER TABLE `patient_visit_info` DISABLE KEYS */;
 
-INSERT INTO `patient_visit_info`
-(`visit_id`,`name`,`gender`,`birth_date`,`visit_time`,`hospital`,`medical_record_no`,`parent_name`,`phone`,
- `past_medication`,`chief_complaint`,`main_symptom`,`comorbidity`,`physical_exam`,`tongue_pulse`,
- `tongue_image_path`,`blood_test_image_path`,`inflammation_image_path`,`renal_injury_image_path`,
- `allergen_total_ige`,`allergen_specific_ige`,`tcm_diagnosis`,`tcm_treatment`,`tcm_treatment_image_path`,`tcm_external_prescription`)
+INSERT INTO `patient_visit_info` (
+    `name`, `gender`, `birth_date`, `visit_time`, `hospital`, `medical_record_no`,
+    `parent_name`, `phone`, `past_medication`, `chief_complaint`, `main_symptom`,
+    `comorbidity`, `physical_exam`, `tongue_pulse`, `tongue_image_path`,
+    `allergen_total_ige`, `allergen_specific_ige`, `blood_test_image_path`,
+    `inflammation_image_path`, `liver_kidney_image_path`, `renal_injury_image_path`,
+    `tcm_diagnosis`, `tcm_treatment`, `tcm_treatment_image_path`, `tcm_external_prescription`
+)
 VALUES
-    (1,'小一','男','2025-10-01','2025-10-01 00:00:00','中医院','121212',NULL,'1212121212121',
-     '无','鼻塞','打喷嚏','无','鼻甲轻度肿胀','舌淡脉浮',NULL,NULL,NULL,NULL,12222.00,121212.00,'鼻鼽 风寒犯肺证','疏风散寒 宣通鼻窍',NULL,'香嗅疗法'),
-    (2,'小二','男','2025-11-13','2025-11-05 00:00:00','儿童医院','121213',NULL,'18888888888',
-     NULL,'鼻痒','流涕','过敏性哮喘','鼻黏膜充血','舌红苔薄',NULL,NULL,NULL,NULL,NULL,NULL,'鼻鼽 风热犯肺证','清热宣肺 通鼻窍',NULL,'耳穴压豆'),
-    (3,'大一','男','2025-11-10','2025-11-03 00:00:00','人民医院','121214',NULL,'19999999999',
-     '抗组胺药','鼻塞加重','喷嚏频繁','慢性鼻炎','鼻甲肿胀','舌红脉细',NULL,NULL,NULL,NULL,NULL,NULL,'鼻鼽 肺气虚弱证','益气固表 通窍',NULL,'穴位贴敷');
+-- 儿童患者（含家长信息）
+('小一', '男', '2020-05-12', '2025-10-01', '中医院', 'MR20251001001',
+ '张三', '13812345678', '无', '鼻塞', '打喷嚏,流涕',
+ '无', '鼻甲轻度肿胀', '舌淡脉浮', '/images/tongue/xiaoyi.jpg',
+ 123.5, 2.8, '/images/lab/blood_xiaoyi.jpg', '/images/lab/inflam_xiaoyi.jpg',
+ '/images/lab/liverkidney_xiaoyi.jpg', NULL,
+ '鼻鼽·风寒犯肺证', '疏风散寒,宣通鼻窍', '/images/tcm/fangji_xiaoyi.jpg', '香嗅疗法'),
+
+-- 儿童患者（过敏性哮喘）
+('小二', '男', '2021-03-20', '2025-11-05', '儿童医院', 'MR20251105002',
+ '李四', '13987654321', NULL, '鼻痒', '流涕,喷嚏频繁',
+ '过敏性哮喘', '鼻黏膜充血', '舌红苔薄', '/images/tongue/xiaoer.jpg',
+ 310.2, 5.1, '/images/lab/blood_xiaoer.jpg', '/images/lab/inflam_xiaoer.jpg',
+ NULL, NULL,
+ '鼻鼽·风热犯肺证', '清热宣肺,通鼻窍', '/images/tcm/fangji_xiaoer.jpg', '耳穴压豆'),
+
+-- 成人患者（慢性鼻炎）
+('大一', '男', '1998-07-15', '2025-11-03', '人民医院', 'MR20251103003',
+ NULL, '13799998888', '长期抗组胺药', '鼻塞加重', '喷嚏频繁,流涕',
+ '慢性鼻炎', '鼻甲肿胀', '舌红脉细', '/images/tongue/dayi.jpg',
+ NULL, NULL, '/images/lab/blood_dayi.jpg', NULL,
+ '/images/lab/liverkidney_dayi.jpg', '/images/lab/renal_dayi.jpg',
+ '鼻鼽·肺气虚弱证', '益气固表,通窍', '/images/tcm/fangji_dayi.jpg', '穴位贴敷');
 
 /*!40000 ALTER TABLE `patient_visit_info` ENABLE KEYS */;
 UNLOCK TABLES;
