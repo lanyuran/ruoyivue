@@ -49,20 +49,6 @@
           @click="handleExcelImport"
           v-hasPermi="['patient:information:excel_add']"
         >excel导入</el-button>
-        <input
-          ref="excelInput"
-          type="file"
-          accept=".xlsx"
-          style="display:none"
-          @change="onExcelChange"
-        />
-        <el-progress
-          v-if="uploading"
-          :percentage="uploadPercent"
-          :text-inside="true"
-          :stroke-width="16"
-          style="width:260px;margin-top:8px"
-        />
       </el-col>
       <el-col :span="1.5">
         <el-button
@@ -242,7 +228,6 @@
 
 <script>
 import { listInformation, getInformation, delInformation, addInformation, updateInformation } from "@/api/patient/information"
-import request from '@/utils/request'
 
 export default {
   name: "Information",
@@ -322,10 +307,7 @@ export default {
         tcmExternalPrescription: [
           { required: true, message: "中医外治处方不能为空", trigger: "blur" }
         ]
-      },
-      // Excel 导入相关
-      uploading: false,
-      uploadPercent: 0
+      }
     }
   },
   created() {
@@ -396,46 +378,7 @@ export default {
     },
     /** excel导入按钮操作 */
     handleExcelImport() {
-      if (this.uploading) return
-      const input = this.$refs.excelInput
-      if (input) input.click()
-    },
-    // 选择 Excel 后上传
-    async onExcelChange(e) {
-      const files = e && e.target ? e.target.files : null
-      const file = files && files[0]
-      if (!file) return
-      // 简单校验后缀
-      if (!/\.xlsx$/i.test(file.name)) {
-        this.$message.error('仅支持 .xlsx 文件导入')
-        if (this.$refs.excelInput) this.$refs.excelInput.value = ''
-        return
-      }
-      const formData = new FormData()
-      formData.append('file', file)
-      this.uploading = true
-      this.uploadPercent = 0
-      try {
-        await request({
-          url: '/patient/information/import',
-          method: 'post',
-          data: formData,
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (evt) => {
-            if (evt && evt.total) {
-              this.uploadPercent = Math.round((evt.loaded / evt.total) * 100)
-            }
-          }
-        })
-        this.$modal.msgSuccess('导入成功')
-        this.getList()
-      } catch (err) {
-        this.$message.error((err && err.msg) || '导入失败')
-      } finally {
-        this.uploading = false
-        this.uploadPercent = 0
-        if (this.$refs.excelInput) this.$refs.excelInput.value = ''
-      }
+
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
