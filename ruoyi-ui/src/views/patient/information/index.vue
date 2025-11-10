@@ -118,135 +118,221 @@
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
-
     <el-table v-loading="loading" :data="informationList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="就诊记录ID" align="center" prop="visitId" />
-      <el-table-column label="患者姓名" align="center" prop="name" />
-      <el-table-column label="患者性别" align="center" prop="gender" />
-      <el-table-column label="患者出生日期" align="center" prop="birthDate" width="180">
+      <el-table-column label="序号" align="center" prop="visitId" width="80" />
+      <el-table-column label="姓名" align="center" prop="name" />
+      <el-table-column label="性别" align="center" prop="gender" />
+      <el-table-column label="出生日期" align="center" prop="birthDate" width="130">
         <template slot-scope="scope">
-          <span>{{ parseTime(scope.row.birthDate, '{y}-{m}-{d}') }}</span>
+          {{ parseTime(scope.row.birthDate, '{y}-{m}-{d}') }}
         </template>
       </el-table-column>
-      <el-table-column label="就诊时间" align="center" prop="visitTime" width="180">
+      <el-table-column label="就诊日期" align="center" prop="visitTime" width="130">
         <template slot-scope="scope">
-          <span>{{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}</span>
+          {{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}
         </template>
       </el-table-column>
-      <el-table-column label="就诊医院名称" align="center" prop="hospital" />
+      <el-table-column label="医院" align="center" prop="hospital" />
       <el-table-column label="病历号" align="center" prop="medicalRecordNo" />
       <el-table-column label="家长姓名" align="center" prop="parentName" />
-      <el-table-column label="联系手机号码" align="center" prop="phone" />
+      <el-table-column label="联系电话" align="center" prop="phone" />
       <el-table-column label="既往用药史" align="center" prop="pastMedication" />
       <el-table-column label="主诉" align="center" prop="chiefComplaint" />
       <el-table-column label="主证" align="center" prop="mainSymptom" />
       <el-table-column label="共患病" align="center" prop="comorbidity" />
-      <el-table-column label="体格检查结果" align="center" prop="physicalExam" />
-      <el-table-column label="舌脉情况" align="center" prop="tonguePulse" />
-      <el-table-column label="过敏原检测-总IgE" align="center" prop="allergenTotalIge" />
-      <el-table-column label="过敏原检测-特异性IgE" align="center" prop="allergenSpecificIge" />
+      <el-table-column label="体格检查" align="center" prop="physicalExam" />
+      <el-table-column label="舌脉" align="center" prop="tonguePulse" />
+
+      <!-- 图片预览 -->
+      <el-table-column label="舌象照片" align="center" prop="tongueImagePath">
+        <template slot-scope="scope">
+          <el-image
+            v-if="scope.row.tongueImagePath"
+            style="width:80px;height:80px"
+            :src="scope.row.tongueImagePath"
+            :preview-src-list="[scope.row.tongueImagePath]"
+          />
+        </template>
+      </el-table-column>
+
+      <el-table-column label="总 IgE" align="center" prop="allergenTotalIge" />
+      <el-table-column label="特异性 IgE" align="center" prop="allergenSpecificIge" />
+
+      <!-- 各种报告图片 -->
+      <el-table-column label="血常规" align="center" prop="bloodTestImagePath">
+        <preview-image :url="scope.row.bloodTestImagePath" slot-scope="scope" />
+      </el-table-column>
+
+      <el-table-column label="炎症因子" align="center" prop="inflammationImagePath">
+        <preview-image :url="scope.row.inflammationImagePath" slot-scope="scope" />
+      </el-table-column>
+
+      <el-table-column label="肝肾功能" align="center" prop="liverKidneyImagePath">
+        <preview-image :url="scope.row.liverKidneyImagePath" slot-scope="scope" />
+      </el-table-column>
+
+      <el-table-column label="肾损伤" align="center" prop="renalInjuryImagePath">
+        <preview-image :url="scope.row.renalInjuryImagePath" slot-scope="scope" />
+      </el-table-column>
+
       <el-table-column label="中医诊断" align="center" prop="tcmDiagnosis" />
       <el-table-column label="中医治法" align="center" prop="tcmTreatment" />
-      <el-table-column label="中医外治处方" align="center" prop="tcmExternalPrescription" />
-      <el-table-column label="操作" align="center" class-name="small-padding fixed-width">
+
+      <el-table-column label="处方照片" align="center" prop="tcmTreatmentImagePath">
         <template slot-scope="scope">
-          <el-button
-            size="mini"
-            type="text"
-            icon="el-icon-edit"
-            @click="handleUpdate(scope.row)"
-            v-hasPermi="['patient:information:edit']"
-          >修改</el-button>
-          <el-button
-            size="mini"
-            type="text"
-            icon="el-icon-delete"
-            @click="handleDelete(scope.row)"
-            v-hasPermi="['patient:information:remove']"
-          >删除</el-button>
+          <el-image
+            v-if="scope.row.tcmTreatmentImagePath"
+            style="width:80px;height:80px"
+            :src="scope.row.tcmTreatmentImagePath"
+            :preview-src-list="[scope.row.tcmTreatmentImagePath]"
+          />
+        </template>
+      </el-table-column>
+
+      <el-table-column label="外治处方" align="center" prop="tcmExternalPrescription" />
+
+      <el-table-column label="操作" align="center" width="150">
+        <template slot-scope="scope">
+          <el-button size="mini" type="text" @click="handleUpdate(scope.row)">修改</el-button>
+          <el-button size="mini" type="text" @click="handleDelete(scope.row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
+    <!-- 分页 -->
     <pagination
-      v-show="total>0"
+      v-show="total > 0"
       :total="total"
       :page.sync="queryParams.pageNum"
       :limit.sync="queryParams.pageSize"
       @pagination="getList"
     />
 
-    <!-- 添加或修改鼻炎患者就诊信息主（包含文档中所有字段）对话框 -->
-    <el-dialog :title="title" :visible.sync="open" width="500px" append-to-body>
-      <el-form ref="form" :model="form" :rules="rules" label-width="80px">
+    <!-- ====================== 编辑表单 ====================== -->
+    <el-dialog :title="title" :visible.sync="open" width="600px" append-to-body>
+      <el-form ref="form" :model="form" :rules="rules" label-width="130px">
+
         <el-form-item label="患者姓名" prop="name">
-          <el-input v-model="form.name" placeholder="请输入患者姓名" />
+          <el-input v-model="form.name"></el-input>
         </el-form-item>
-        <el-form-item label="患者出生日期" prop="birthDate">
-          <el-date-picker clearable
-            v-model="form.birthDate"
-            type="date"
-            value-format="yyyy-MM-dd"
-            placeholder="请选择患者出生日期":disabled="isReadonly">
-          </el-date-picker>
+
+        <el-form-item label="出生日期" prop="birthDate">
+          <el-date-picker v-model="form.birthDate" type="date" value-format="yyyy-MM-dd" />
         </el-form-item>
-        <el-form-item label="就诊时间" prop="visitTime">
-          <el-date-picker clearable
-            v-model="form.visitTime"
-            type="date"
-            value-format="yyyy-MM-dd"
-            placeholder="请选择就诊时间"   :disabled="isReadonly">
-          </el-date-picker>
+
+        <el-form-item label="就诊日期" prop="visitTime">
+          <el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" />
         </el-form-item>
-        <el-form-item label="就诊医院名称" prop="hospital">
-          <el-input v-model="form.hospital" placeholder="请输入就诊医院名称" />
+
+        <el-form-item label="医院" prop="hospital">
+          <el-input v-model="form.hospital"></el-input>
         </el-form-item>
+
         <el-form-item label="病历号" prop="medicalRecordNo">
-          <el-input v-model="form.medicalRecordNo" placeholder="请输入病历号" />
+          <el-input v-model="form.medicalRecordNo"></el-input>
         </el-form-item>
-        <el-form-item label="联系手机号码" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入联系手机号码" />
+
+        <el-form-item label="家长姓名" prop="parentName">
+          <el-input v-model="form.parentName"></el-input>
         </el-form-item>
+
+        <el-form-item label="联系电话" prop="phone">
+          <el-input v-model="form.phone"></el-input>
+        </el-form-item>
+
         <el-form-item label="既往用药史" prop="pastMedication">
-          <el-input v-model="form.pastMedication" type="textarea" placeholder="请输入内容" />
+          <el-input type="textarea" v-model="form.pastMedication"></el-input>
         </el-form-item>
+
         <el-form-item label="主诉" prop="chiefComplaint">
-          <el-input v-model="form.chiefComplaint" type="textarea" placeholder="请输入内容" />
+          <el-input type="textarea" v-model="form.chiefComplaint"></el-input>
         </el-form-item>
+
         <el-form-item label="主证" prop="mainSymptom">
-          <el-input v-model="form.mainSymptom" type="textarea" placeholder="请输入内容" />
+          <el-input type="textarea" v-model="form.mainSymptom"></el-input>
         </el-form-item>
+
         <el-form-item label="共患病" prop="comorbidity">
-          <el-input v-model="form.comorbidity" type="textarea" placeholder="请输入内容" />
+          <el-input type="textarea" v-model="form.comorbidity"></el-input>
         </el-form-item>
-        <el-form-item label="体格检查结果" prop="physicalExam">
-          <el-input v-model="form.physicalExam" type="textarea" placeholder="请输入内容" />
+
+        <el-form-item label="体格检查" prop="physicalExam">
+          <el-input type="textarea" v-model="form.physicalExam"></el-input>
         </el-form-item>
-        <el-form-item label="舌脉情况" prop="tonguePulse">
-          <el-input v-model="form.tonguePulse" type="textarea" placeholder="请输入内容" />
+
+        <el-form-item label="舌脉" prop="tonguePulse">
+          <el-input type="textarea" v-model="form.tonguePulse"></el-input>
         </el-form-item>
-        <el-form-item label="过敏原检测-总IgE" prop="allergenTotalIge">
-          <el-input v-model="form.allergenTotalIge" placeholder="请输入过敏原检测-总IgE" />
+
+        <!-- 图片上传组件 -->
+        <el-form-item label="舌象照片">
+          <el-upload :action="uploadUrl" :on-success="(res)=>handleUpload(res,'tongueImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
         </el-form-item>
-        <el-form-item label="过敏原检测-特异性IgE" prop="allergenSpecificIge">
-          <el-input v-model="form.allergenSpecificIge" placeholder="请输入过敏原检测-特异性IgE" />
+
+        <el-form-item label="总 IgE">
+          <el-input v-model="form.allergenTotalIge" />
         </el-form-item>
-        <el-form-item label="中医诊断" prop="tcmDiagnosis">
-          <el-input v-model="form.tcmDiagnosis" placeholder="请输入中医诊断" />
+
+        <el-form-item label="特异性 IgE">
+          <el-input v-model="form.allergenSpecificIge" />
         </el-form-item>
-        <el-form-item label="中医治法" prop="tcmTreatment">
-          <el-input v-model="form.tcmTreatment" placeholder="请输入中医治法" />
+
+        <!-- 统一报告上传 -->
+        <el-form-item label="血常规报告">
+          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'bloodTestImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
         </el-form-item>
-        <el-form-item label="中医外治处方" prop="tcmExternalPrescription">
-          <el-input v-model="form.tcmExternalPrescription" type="textarea" placeholder="请输入内容" />
+
+        <el-form-item label="炎症因子报告">
+          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'inflammationImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
         </el-form-item>
+
+        <el-form-item label="肝肾功能">
+          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'liverKidneyImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
+        </el-form-item>
+
+        <el-form-item label="肾早期损伤">
+          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'renalInjuryImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
+        </el-form-item>
+
+        <el-form-item label="中医诊断">
+          <el-input v-model="form.tcmDiagnosis"></el-input>
+        </el-form-item>
+
+        <el-form-item label="中医治法">
+          <el-input v-model="form.tcmTreatment"></el-input>
+        </el-form-item>
+
+        <el-form-item label="处方照片">
+          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'tcmTreatmentImagePath')" list-type="picture-card">
+            <i class="el-icon-plus"></i>
+          </el-upload>
+        </el-form-item>
+
+        <el-form-item label="中医外治处方">
+          <el-input v-model="form.tcmExternalPrescription" type="textarea" />
+        </el-form-item>
+
       </el-form>
+
+      <!-- Dialog Footer -->
       <div slot="footer" class="dialog-footer">
         <el-button type="primary" @click="submitForm">确 定</el-button>
         <el-button @click="cancel">取 消</el-button>
       </div>
+
     </el-dialog>
+
   </div>
 </template>
 
