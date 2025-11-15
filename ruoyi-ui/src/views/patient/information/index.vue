@@ -227,7 +227,7 @@
 </template>
 
 <script>
-import { listInformation, getInformation, delInformation, addInformation, updateInformation } from "@/api/patient/information"
+import { listInformation, getInformation, delInformation, addInformation, updateInformation, importInformationExcel } from "@/api/patient/information"
 
 export default {
   name: "Information",
@@ -378,7 +378,32 @@ export default {
     },
     /** excel导入按钮操作 */
     handleExcelImport() {
-
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.xlsx'
+      input.onchange = () => {
+        const file = input.files && input.files[0]
+        if (!file) {
+          return
+        }
+        const fileName = file.name.toLowerCase()
+        if (!fileName.endsWith('.xlsx')) {
+          this.$modal.msgError("请选择后缀为 “xlsx” 的文件。")
+          input.value = ''
+          return
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+        this.$modal.loading("正在导入，请稍候...")
+        importInformationExcel(formData).then(response => {
+          this.$modal.msgSuccess(response.msg || "导入成功")
+          this.getList()
+        }).catch(() => {}).finally(() => {
+          this.$modal.closeLoading()
+          input.value = ''
+        })
+      }
+      input.click()
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
