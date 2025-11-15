@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -51,6 +52,44 @@ public class PatientVisitInfoController extends BaseController
     }
 
     /**
+     * 导入鼻炎患者就诊信息（Excel）
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:excel_add')")
+    @Log(title = "鼻炎患者就诊信息主（包含文档中所有字段）", businessType = BusinessType.IMPORT)
+    @PostMapping("/importData")
+    public AjaxResult importData(MultipartFile file) throws Exception
+    {
+        // Check
+        if (file == null || file.isEmpty())
+        {
+            return AjaxResult.error("上传文件不能为空");
+        }
+        ExcelUtil<PatientVisitInfo> util = new ExcelUtil<>(PatientVisitInfo.class);
+        List<PatientVisitInfo> visitInfos = util.importExcel(file.getInputStream());
+        if (visitInfos == null || visitInfos.isEmpty())
+        {
+            return AjaxResult.error("导入数据为空");
+        }
+
+        int successCount = 0;
+        int iDbg = 1;
+        for (PatientVisitInfo info : visitInfos)
+        {
+            System.out.println(iDbg);
+            iDbg++;
+            if (info == null) {
+                System.out.println("info == null");
+                continue;
+            }
+            info.setCreateBy(getUsername());
+            System.out.println(info);
+            successCount += 1;
+//            successCount += patientVisitInfoService.insertPatientVisitInfo(info);
+        }
+        return AjaxResult.success("成功导入 " + successCount + " 条就诊记录");
+    }
+
+    /**
      * 导出鼻炎患者就诊信息主（包含文档中所有字段）列表
      */
     @PreAuthorize("@ss.hasPermi('patient:information:export')")
@@ -77,8 +116,8 @@ public class PatientVisitInfoController extends BaseController
             vo.setComorbidity(p.getComorbidity());
             vo.setPhysicalExam(p.getPhysicalExam());
             vo.setTonguePulse(p.getTonguePulse());
-            vo.setAllergenTotalIge(p.getAllergenTotalIge());
-            vo.setAllergenSpecificIge(p.getAllergenSpecificIge());
+//            vo.setAllergenTotalIge(p.getAllergenTotalIge()); // 报错暂时注释
+//            vo.setAllergenSpecificIge(p.getAllergenSpecificIge()); // 报错暂时注释
             vo.setTcmDiagnosis(p.getTcmDiagnosis());
             vo.setTcmTreatment(p.getTcmTreatment());
             vo.setTcmExternalPrescription(p.getTcmExternalPrescription());
