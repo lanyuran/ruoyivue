@@ -1,10 +1,35 @@
 package com.ruoyi.patient.controller;
 
-import java.util.LinkedHashMap;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.poi.hssf.usermodel.HSSFClientAnchor;
+import org.apache.poi.hssf.usermodel.HSSFPicture;
+import org.apache.poi.hssf.usermodel.HSSFShape;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.PictureData;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFClientAnchor;
+import org.apache.poi.xssf.usermodel.XSSFDrawing;
+import org.apache.poi.xssf.usermodel.XSSFPicture;
+import org.apache.poi.xssf.usermodel.XSSFShape;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,10 +40,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.patient.domain.PatientVisitInfo;
 import com.ruoyi.patient.domain.PatientVisitExportVO;
 import com.ruoyi.patient.service.IPatientVisitInfoService;
@@ -35,6 +62,20 @@ import com.ruoyi.common.core.page.TableDataInfo;
 @RequestMapping("/patient/information")
 public class PatientVisitInfoController extends BaseController
 {
+    private static final DateTimeFormatter IMAGE_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final Map<String, BiConsumer<PatientVisitInfo, String>> IMAGE_HEADER_SETTERS = new HashMap<>();
+    private static final Map<Integer, BiConsumer<PatientVisitInfo, String>> IMAGE_COLUMN_SETTERS = new HashMap<>();
+
+    static
+    {
+        registerImageMapping("15、请上传自然光线下舌象照片", 14, PatientVisitInfo::setTongueImagePath);
+        registerImageMapping("18、血常规     RBC;WBC;PLT;Hb;EOS", 17, PatientVisitInfo::setBloodTestImagePath);
+        registerImageMapping("19、炎症因子 IL-4；IL-6；IL-10；TNF-α", 18, PatientVisitInfo::setInflammationImagePath);
+        registerImageMapping("20、肝肾功能 Scr；Bun；ALT；AST；TBIL", 19, PatientVisitInfo::setLiverKidneyImagePath);
+        registerImageMapping("21、肾早期损伤 尿微量蛋白；尿肌酐；β2-微球蛋白；微量蛋白/尿肌酐", 20, PatientVisitInfo::setRenalInjuryImagePath);
+        registerImageMapping("24、中药处方", 23, PatientVisitInfo::setTcmTreatmentImagePath);
+    }
+
     @Autowired
     private IPatientVisitInfoService patientVisitInfoService;
 
@@ -48,6 +89,44 @@ public class PatientVisitInfoController extends BaseController
         startPage();
         List<PatientVisitInfo> list = patientVisitInfoService.selectPatientVisitInfoList(patientVisitInfo);
         return getDataTable(list);
+    }
+
+    /**
+     * 导入鼻炎患者就诊信息（Excel）
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:excel_add')")
+    @Log(title = "鼻炎患者就诊信息主（包含文档中所有字段）", businessType = BusinessType.IMPORT)
+    @PostMapping("/importData")
+    public AjaxResult importData(MultipartFile file) throws Exception
+    {
+        if (file == null || file.isEmpty())
+        {
+            return AjaxResult.error("上传文件不能为空");
+        }
+        byte[] fileBytes = file.getBytes();
+        ExcelImportContext importContext = buildImportContext(fileBytes);
+        List<String> imagePaths = importContext.getImageInfos().stream().map(ExcelImageInfo::getPath).collect(Collectors.toList());
+        ExcelUtil<PatientVisitInfo> util = new ExcelUtil<>(PatientVisitInfo.class);
+        List<PatientVisitInfo> visitInfos = util.importExcel(new ByteArrayInputStream(fileBytes));
+        if (visitInfos == null || visitInfos.isEmpty())
+        {
+            return AjaxResult.error("导入数据为空");
+        }
+
+        fillMissingImageColumns(visitInfos, importContext);
+        int successCount = 0;
+        for (PatientVisitInfo info : visitInfos)
+        {
+            if (info == null)
+            {
+                continue;
+            }
+            info.setCreateBy(getUsername());
+            successCount += patientVisitInfoService.insertPatientVisitInfo(info);
+        }
+        AjaxResult result = AjaxResult.success("成功导入 " + successCount + " 条就诊记录");
+        result.put("imagePaths", imagePaths);
+        return result;
     }
 
     /**
@@ -77,8 +156,8 @@ public class PatientVisitInfoController extends BaseController
             vo.setComorbidity(p.getComorbidity());
             vo.setPhysicalExam(p.getPhysicalExam());
             vo.setTonguePulse(p.getTonguePulse());
-            vo.setAllergenTotalIge(p.getAllergenTotalIge());
-            vo.setAllergenSpecificIge(p.getAllergenSpecificIge());
+//            vo.setAllergenTotalIge(p.getAllergenTotalIge()); // 报错暂时注释
+//            vo.setAllergenSpecificIge(p.getAllergenSpecificIge()); // 报错暂时注释
             vo.setTcmDiagnosis(p.getTcmDiagnosis());
             vo.setTcmTreatment(p.getTcmTreatment());
             vo.setTcmExternalPrescription(p.getTcmExternalPrescription());
@@ -134,9 +213,303 @@ public class PatientVisitInfoController extends BaseController
     {
         return toAjax(patientVisitInfoService.deletePatientVisitInfoByVisitIds(visitIds));
     }
-    /**
-     * 获取鼻炎患者就诊信息主（包含文档中所有字段）详细信息
-     */
 
+    private ExcelImportContext buildImportContext(byte[] fileBytes) throws IOException
+    {
+        List<ExcelImageInfo> imageInfos = new ArrayList<>();
+        List<Integer> dataRows = new ArrayList<>();
+        if (fileBytes == null || fileBytes.length == 0)
+        {
+            return new ExcelImportContext(imageInfos, dataRows);
+        }
+        Path cacheRoot = Paths.get("image-cache");
+        Files.createDirectories(cacheRoot);
+        String dirName = IMAGE_DIR_FORMATTER.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().replace("-", "");
+        Path targetDir = cacheRoot.resolve(dirName);
+        Files.createDirectories(targetDir);
+        String relativeDir = "image-cache/" + dirName + "/";
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(fileBytes)))
+        {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null)
+            {
+                return new ExcelImportContext(imageInfos, dataRows);
+            }
+            List<String> headers = readHeaderValues(sheet.getRow(0));
+            collectDataRowIndexes(sheet, 0, dataRows);
+            writeSheetPictures(workbook, sheet, headers, targetDir, relativeDir, imageInfos);
+        }
+        return new ExcelImportContext(imageInfos, dataRows);
+    }
 
+    private void fillMissingImageColumns(List<PatientVisitInfo> visitInfos, ExcelImportContext context)
+    {
+        if (visitInfos == null || visitInfos.isEmpty() || context == null)
+        {
+            return;
+        }
+        List<ExcelImageInfo> imageInfos = context.getImageInfos();
+        if (imageInfos.isEmpty())
+        {
+        }
+        Map<Integer, PatientVisitInfo> rowIndexToEntity = new HashMap<>();
+        List<Integer> dataRowIndexes = context.getDataRowIndexes();
+        for (int i = 0; i < visitInfos.size() && i < dataRowIndexes.size(); i++)
+        {
+            PatientVisitInfo info = visitInfos.get(i);
+            if (info != null)
+            {
+                rowIndexToEntity.put(dataRowIndexes.get(i), info);
+            }
+        }
+        for (ExcelImageInfo imageInfo : imageInfos)
+        {
+            PatientVisitInfo target = rowIndexToEntity.get(imageInfo.getRowIndex());
+            if (target == null)
+            {
+                continue;
+            }
+            applyImageToEntity(target, imageInfo);
+        }
+    }
+
+    private void applyImageToEntity(PatientVisitInfo info, ExcelImageInfo imageInfo)
+    {
+        if (info == null || imageInfo == null || StringUtils.isEmpty(imageInfo.getPath()))
+        {
+            return;
+        }
+        BiConsumer<PatientVisitInfo, String> setter = IMAGE_HEADER_SETTERS.get(imageInfo.getHeaderName());
+        if (setter == null)
+        {
+            setter = IMAGE_COLUMN_SETTERS.get(imageInfo.getColumnIndex());
+        }
+        if (setter != null)
+        {
+            setter.accept(info, imageInfo.getPath());
+        }
+    }
+
+    private static void registerImageMapping(String header, int columnIndex, BiConsumer<PatientVisitInfo, String> setter)
+    {
+        IMAGE_HEADER_SETTERS.put(header, setter);
+        IMAGE_COLUMN_SETTERS.put(columnIndex, setter);
+    }
+
+    private List<String> readHeaderValues(Row headerRow)
+    {
+        List<String> headers = new ArrayList<>();
+        if (headerRow == null)
+        {
+            return headers;
+        }
+        short cellCount = headerRow.getLastCellNum();
+        for (int i = 0; i < cellCount; i++)
+        {
+            Cell cell = headerRow.getCell(i);
+            headers.add(cell == null ? null : cell.toString());
+        }
+        return headers;
+    }
+
+    private void collectDataRowIndexes(Sheet sheet, int headerRowIndex, List<Integer> rowIndexes)
+    {
+        if (sheet == null || rowIndexes == null)
+        {
+            return;
+        }
+        int lastRow = sheet.getLastRowNum();
+        for (int i = headerRowIndex + 1; i <= lastRow; i++)
+        {
+            Row row = sheet.getRow(i);
+            if (!isRowEmpty(row))
+            {
+                rowIndexes.add(i);
+            }
+        }
+    }
+
+    private boolean isRowEmpty(Row row)
+    {
+        if (row == null)
+        {
+            return true;
+        }
+        short lastCell = row.getLastCellNum();
+        for (int i = row.getFirstCellNum(); i < lastCell; i++)
+        {
+            Cell cell = row.getCell(i);
+            if (cell != null && StringUtils.isNotEmpty(cell.toString()))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void writeSheetPictures(Workbook workbook, Sheet sheet, List<String> headers, Path targetDir,
+            String relativeDir, List<ExcelImageInfo> container) throws IOException
+    {
+        if (sheet instanceof XSSFSheet)
+        {
+            collectXssfPictures((XSSFSheet) sheet, headers, targetDir, relativeDir, container);
+        }
+        else if (sheet instanceof HSSFSheet)
+        {
+            collectHssfPictures((HSSFSheet) sheet, headers, targetDir, relativeDir, container);
+        }
+        else
+        {
+            List<? extends PictureData> pictures = workbook.getAllPictures();
+            if (pictures == null || pictures.isEmpty())
+            {
+                return;
+            }
+            int[] counter = { 1 };
+            for (PictureData data : pictures)
+            {
+                String path = writePictureBytes(data, targetDir, relativeDir, counter[0]++);
+                container.add(new ExcelImageInfo(-1, -1, null, path));
+            }
+        }
+    }
+
+    private void collectXssfPictures(XSSFSheet sheet, List<String> headers, Path targetDir, String relativeDir,
+            List<ExcelImageInfo> container) throws IOException
+    {
+        XSSFDrawing drawing = sheet.getDrawingPatriarch();
+        if (drawing == null)
+        {
+            return;
+        }
+        int[] counter = { 1 };
+        for (XSSFShape shape : drawing.getShapes())
+        {
+            if (!(shape instanceof XSSFPicture))
+            {
+                continue;
+            }
+            XSSFPicture picture = (XSSFPicture) shape;
+            XSSFClientAnchor anchor = picture.getClientAnchor();
+            if (anchor == null)
+            {
+                anchor = picture.getPreferredSize();
+            }
+            if (anchor == null)
+            {
+                continue;
+            }
+            PictureData pictureData = picture.getPictureData();
+            String path = writePictureBytes(pictureData, targetDir, relativeDir, counter[0]++);
+            container.add(new ExcelImageInfo(anchor.getRow1(), anchor.getCol1(), getHeader(headers, anchor.getCol1()), path));
+        }
+    }
+
+    private void collectHssfPictures(HSSFSheet sheet, List<String> headers, Path targetDir, String relativeDir,
+            List<ExcelImageInfo> container) throws IOException
+    {
+        org.apache.poi.hssf.usermodel.HSSFPatriarch patriarch = sheet.getDrawingPatriarch();
+        if (patriarch == null)
+        {
+            return;
+        }
+        int[] counter = { 1 };
+        for (HSSFShape shape : patriarch.getChildren())
+        {
+            if (!(shape instanceof HSSFPicture))
+            {
+                continue;
+            }
+            HSSFPicture picture = (HSSFPicture) shape;
+            HSSFClientAnchor anchor = (HSSFClientAnchor) picture.getAnchor();
+            if (anchor == null)
+            {
+                continue;
+            }
+            PictureData pictureData = picture.getPictureData();
+            String path = writePictureBytes(pictureData, targetDir, relativeDir, counter[0]++);
+            container.add(new ExcelImageInfo(anchor.getRow1(), anchor.getCol1(), getHeader(headers, anchor.getCol1()), path));
+        }
+    }
+
+    private String writePictureBytes(PictureData data, Path targetDir, String relativeDir, int index) throws IOException
+    {
+        byte[] bytes = data.getData();
+        String extension = data.suggestFileExtension();
+        if (StringUtils.isEmpty(extension))
+        {
+            extension = "img";
+        }
+        String fileName = String.format("%03d.%s", index, extension);
+        Path destination = targetDir.resolve(fileName);
+        Files.write(destination, bytes);
+        return relativeDir + fileName;
+    }
+
+    private String getHeader(List<String> headers, int columnIndex)
+    {
+        if (headers == null || columnIndex < 0 || columnIndex >= headers.size())
+        {
+            return null;
+        }
+        return headers.get(columnIndex);
+    }
+
+    private static final class ExcelImportContext
+    {
+        private final List<ExcelImageInfo> imageInfos;
+        private final List<Integer> dataRowIndexes;
+
+        private ExcelImportContext(List<ExcelImageInfo> imageInfos, List<Integer> dataRowIndexes)
+        {
+            this.imageInfos = imageInfos;
+            this.dataRowIndexes = dataRowIndexes;
+        }
+
+        public List<ExcelImageInfo> getImageInfos()
+        {
+            return imageInfos;
+        }
+
+        public List<Integer> getDataRowIndexes()
+        {
+            return dataRowIndexes;
+        }
+    }
+
+    private static final class ExcelImageInfo
+    {
+        private final int rowIndex;
+        private final int columnIndex;
+        private final String headerName;
+        private final String path;
+
+        private ExcelImageInfo(int rowIndex, int columnIndex, String headerName, String path)
+        {
+            this.rowIndex = rowIndex;
+            this.columnIndex = columnIndex;
+            this.headerName = headerName;
+            this.path = path;
+        }
+
+        public int getRowIndex()
+        {
+            return rowIndex;
+        }
+
+        public int getColumnIndex()
+        {
+            return columnIndex;
+        }
+
+        public String getHeaderName()
+        {
+            return headerName;
+        }
+
+        public String getPath()
+        {
+            return path;
+        }
+    }
 }

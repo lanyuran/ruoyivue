@@ -52,3 +52,5 @@ nbdist/
 ##
 # My
 my_utils/
+outis-tmp/
+image-cache/

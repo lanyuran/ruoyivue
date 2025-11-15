@@ -1,6 +1,5 @@
 package com.ruoyi.patient.domain;
 
-import java.math.BigDecimal;
 import java.util.Date;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
@@ -10,289 +9,375 @@ import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
  * 鼻炎患者就诊信息主（包含文档中所有字段）对象 patient_visit_info
- * 
+ *
  * @author ruoyi
- * @date 2025-10-21
+ * @date 2025-11-15
  */
 public class PatientVisitInfo extends BaseEntity
 {
     private static final long serialVersionUID = 1L;
 
-    /** 就诊记录ID（主键） */
+    /** 0.序号（主键） */
     private Long visitId;
 
-    /** 患者姓名 */
-    @Excel(name = "患者姓名")
+    /** 1、姓名 */
+    @Excel(name = "1、姓名")
     private String name;
 
-    /** 患者性别（仅男女选项） */
-    @Excel(name = "患者性别", readConverterExp = "仅=男女选项")
+    /** 2、性别 */
+    @Excel(name = "2、性别")
     private String gender;
 
-    /** 患者出生日期（格式：YYYY-MM-DD） */
-    @Excel(name = "患者出生日期", readConverterExp = "格=式：YYYY-MM-DD")
+    /** 3、出生日期 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Excel(name = "3、出生日期", width = 30, dateFormat = "yyyy-MM-dd")
     private Date birthDate;
 
-    /** 就诊时间（格式：YYYY-MM-DD HH:MM:SS） */
-    @Excel(name = "就诊时间", readConverterExp = "格=式：YYYY-MM-DD,H=H:MM:SS")
+    /** 4、就诊时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    @Excel(name = "4、就诊时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date visitTime;
 
-    /** 就诊医院名称 */
-    @Excel(name = "就诊医院名称")
+    /** 5、就诊医院 */
+    @Excel(name = "5、就诊医院")
     private String hospital;
 
-    /** 病历号（唯一标识患者病历） */
-    @Excel(name = "病历号", readConverterExp = "唯=一标识患者病历")
+    /** 6、病历号 */
+    @Excel(name = "6、病历号")
     private String medicalRecordNo;
 
-    /** 家长姓名（儿童患者必填，成人可选） */
-    @Excel(name = "家长姓名", readConverterExp = "儿=童患者必填，成人可选")
+    /** 7、家长姓名 */
+    @Excel(name = "7、家长姓名")
     private String parentName;
 
-    /** 联系手机号码（用于后续随访） */
-    @Excel(name = "联系手机号码", readConverterExp = "用=于后续随访")
+    /** 8、手机号码 */
+    @Excel(name = "8、手机号码")
     private String phone;
 
-    /** 既往用药史（支持多行文本，记录历史用药情况） */
-    @Excel(name = "既往用药史", readConverterExp = "支=持多行文本，记录历史用药情况")
+    /** 9、既往用药 */
+    @Excel(name = "9、既往用药")
     private String pastMedication;
 
-    /** 主诉（患者主要症状描述） */
-    @Excel(name = "主诉", readConverterExp = "患=者主要症状描述")
+    /** 10、主诉 */
+    @Excel(name = "10、主诉")
     private String chiefComplaint;
 
-    /** 主证（如鼻塞、鼻痒等，多个症状用逗号分隔） */
-    @Excel(name = "主证", readConverterExp = "如=鼻塞、鼻痒等，多个症状用逗号分隔")
+    /** 11、主证 */
+    @Excel(name = "11、主证")
     private String mainSymptom;
 
-    /** 共患病（如鼻窦炎、过敏性哮喘等，多个疾病用逗号分隔） */
-    @Excel(name = "共患病", readConverterExp = "如=鼻窦炎、过敏性哮喘等，多个疾病用逗号分隔")
+    /** 12、共患病 */
+    @Excel(name = "12、共患病")
     private String comorbidity;
 
-    /** 体格检查结果（如鼻黏膜色红、鼻甲肿胀等） */
-    @Excel(name = "体格检查结果", readConverterExp = "如=鼻黏膜色红、鼻甲肿胀等")
+    /** 13、体格检查  */
+    @Excel(name = "13、体格检查 ")
     private String physicalExam;
 
-    /** 舌脉情况（记录舌质、舌苔、脉象描述） */
-    @Excel(name = "舌脉情况", readConverterExp = "记=录舌质、舌苔、脉象描述")
+    /** 14、舌脉 */
+    @Excel(name = "14、舌脉")
     private String tonguePulse;
 
-    /** 过敏原检测-总IgE（数值型，单位：IU/mL） */
-    @Excel(name = "过敏原检测-总IgE", readConverterExp = "数=值型，单位：IU/mL")
-    private BigDecimal allergenTotalIge;
+    /** 15、请上传自然光线下舌象照片 */
+    @Excel(name = "15、请上传自然光线下舌象照片")
+    private String tongueImagePath;
 
-    /** 过敏原检测-特异性IgE（数值型，单位：kUA/L） */
-    @Excel(name = "过敏原检测-特异性IgE", readConverterExp = "数=值型，单位：kUA/L")
-    private BigDecimal allergenSpecificIge;
+    /** 16、过敏原检测 总IgE（IU/ml） */
+    @Excel(name = "16、过敏原检测 总IgE", readConverterExp = "I=U/ml")
+    private String allergenTotalIge;
 
-    /** 中医诊断（如“鼻鼽 风寒犯肺证”） */
-    @Excel(name = "中医诊断", readConverterExp = "如=“鼻鼽,风=寒犯肺证”")
+    /** 17、过敏原检测 特异性IgE（IU/ml） */
+    @Excel(name = "17、过敏原检测 特异性IgE", readConverterExp = "I=U/ml")
+    private String allergenSpecificIge;
+
+    /** 18、血常规     RBC;WBC;PLT;Hb;EOS */
+    @Excel(name = "18、血常规     RBC;WBC;PLT;Hb;EOS")
+    private String bloodTestImagePath;
+
+    /** 19、炎症因子 IL-4；IL-6；IL-10；TNF-α */
+    @Excel(name = "19、炎症因子 IL-4；IL-6；IL-10；TNF-α")
+    private String inflammationImagePath;
+
+    /** 20、肝肾功能 Scr；Bun；ALT；AST；TBIL */
+    @Excel(name = "20、肝肾功能 Scr；Bun；ALT；AST；TBIL")
+    private String liverKidneyImagePath;
+
+    /** 21、肾早期损伤 尿微量蛋白；尿肌酐；β2-微球蛋白；微量蛋白/尿肌酐 */
+    @Excel(name = "21、肾早期损伤 尿微量蛋白；尿肌酐；β2-微球蛋白；微量蛋白/尿肌酐")
+    private String renalInjuryImagePath;
+
+    /** 22、中医诊断 */
+    @Excel(name = "22、中医诊断")
     private String tcmDiagnosis;
 
-    /** 中医治法（如“疏风散寒 宣通鼻窍”） */
-    @Excel(name = "中医治法", readConverterExp = "如=“疏风散寒,宣=通鼻窍”")
+    /** 23、中医治法 */
+    @Excel(name = "23、中医治法")
     private String tcmTreatment;
 
-    /** 中医外治处方（如香嗅疗法、耳穴压豆等具体方案） */
-    @Excel(name = "中医外治处方", readConverterExp = "如=香嗅疗法、耳穴压豆等具体方案")
+    /** 24、中药处方 */
+    @Excel(name = "24、中药处方")
+    private String tcmTreatmentImagePath;
+
+    /** 25、中医外治处方 */
+    @Excel(name = "25、中医外治处方")
     private String tcmExternalPrescription;
 
-    public void setVisitId(Long visitId) 
+    public void setVisitId(Long visitId)
     {
         this.visitId = visitId;
     }
 
-    public Long getVisitId() 
+    public Long getVisitId()
     {
         return visitId;
     }
 
-    public void setName(String name) 
+    public void setName(String name)
     {
         this.name = name;
     }
 
-    public String getName() 
+    public String getName()
     {
         return name;
     }
 
-    public void setGender(String gender) 
+    public void setGender(String gender)
     {
         this.gender = gender;
     }
 
-    public String getGender() 
+    public String getGender()
     {
         return gender;
     }
 
-    public void setBirthDate(Date birthDate) 
+    public void setBirthDate(Date birthDate)
     {
         this.birthDate = birthDate;
     }
 
-    public Date getBirthDate() 
+    public Date getBirthDate()
     {
         return birthDate;
     }
 
-    public void setVisitTime(Date visitTime) 
+    public void setVisitTime(Date visitTime)
     {
         this.visitTime = visitTime;
     }
 
-    public Date getVisitTime() 
+    public Date getVisitTime()
     {
         return visitTime;
     }
 
-    public void setHospital(String hospital) 
+    public void setHospital(String hospital)
     {
         this.hospital = hospital;
     }
 
-    public String getHospital() 
+    public String getHospital()
     {
         return hospital;
     }
 
-    public void setMedicalRecordNo(String medicalRecordNo) 
+    public void setMedicalRecordNo(String medicalRecordNo)
     {
         this.medicalRecordNo = medicalRecordNo;
     }
 
-    public String getMedicalRecordNo() 
+    public String getMedicalRecordNo()
     {
         return medicalRecordNo;
     }
 
-    public void setParentName(String parentName) 
+    public void setParentName(String parentName)
     {
         this.parentName = parentName;
     }
 
-    public String getParentName() 
+    public String getParentName()
     {
         return parentName;
     }
 
-    public void setPhone(String phone) 
+    public void setPhone(String phone)
     {
         this.phone = phone;
     }
 
-    public String getPhone() 
+    public String getPhone()
     {
         return phone;
     }
 
-    public void setPastMedication(String pastMedication) 
+    public void setPastMedication(String pastMedication)
     {
         this.pastMedication = pastMedication;
     }
 
-    public String getPastMedication() 
+    public String getPastMedication()
     {
         return pastMedication;
     }
 
-    public void setChiefComplaint(String chiefComplaint) 
+    public void setChiefComplaint(String chiefComplaint)
     {
         this.chiefComplaint = chiefComplaint;
     }
 
-    public String getChiefComplaint() 
+    public String getChiefComplaint()
     {
         return chiefComplaint;
     }
 
-    public void setMainSymptom(String mainSymptom) 
+    public void setMainSymptom(String mainSymptom)
     {
         this.mainSymptom = mainSymptom;
     }
 
-    public String getMainSymptom() 
+    public String getMainSymptom()
     {
         return mainSymptom;
     }
 
-    public void setComorbidity(String comorbidity) 
+    public void setComorbidity(String comorbidity)
     {
         this.comorbidity = comorbidity;
     }
 
-    public String getComorbidity() 
+    public String getComorbidity()
     {
         return comorbidity;
     }
 
-    public void setPhysicalExam(String physicalExam) 
+    public void setPhysicalExam(String physicalExam)
     {
         this.physicalExam = physicalExam;
     }
 
-    public String getPhysicalExam() 
+    public String getPhysicalExam()
     {
         return physicalExam;
     }
 
-    public void setTonguePulse(String tonguePulse) 
+    public void setTonguePulse(String tonguePulse)
     {
         this.tonguePulse = tonguePulse;
     }
 
-    public String getTonguePulse() 
+    public String getTonguePulse()
     {
         return tonguePulse;
     }
 
-    public void setAllergenTotalIge(BigDecimal allergenTotalIge) 
+    public void setTongueImagePath(String tongueImagePath)
+    {
+        this.tongueImagePath = tongueImagePath;
+    }
+
+    public String getTongueImagePath()
+    {
+        return tongueImagePath;
+    }
+
+    public void setAllergenTotalIge(String allergenTotalIge)
     {
         this.allergenTotalIge = allergenTotalIge;
     }
 
-    public BigDecimal getAllergenTotalIge() 
+    public String getAllergenTotalIge()
     {
         return allergenTotalIge;
     }
 
-    public void setAllergenSpecificIge(BigDecimal allergenSpecificIge) 
+    public void setAllergenSpecificIge(String allergenSpecificIge)
     {
         this.allergenSpecificIge = allergenSpecificIge;
     }
 
-    public BigDecimal getAllergenSpecificIge() 
+    public String getAllergenSpecificIge()
     {
         return allergenSpecificIge;
     }
 
-    public void setTcmDiagnosis(String tcmDiagnosis) 
+    public void setBloodTestImagePath(String bloodTestImagePath)
+    {
+        this.bloodTestImagePath = bloodTestImagePath;
+    }
+
+    public String getBloodTestImagePath()
+    {
+        return bloodTestImagePath;
+    }
+
+    public void setInflammationImagePath(String inflammationImagePath)
+    {
+        this.inflammationImagePath = inflammationImagePath;
+    }
+
+    public String getInflammationImagePath()
+    {
+        return inflammationImagePath;
+    }
+
+    public void setLiverKidneyImagePath(String liverKidneyImagePath)
+    {
+        this.liverKidneyImagePath = liverKidneyImagePath;
+    }
+
+    public String getLiverKidneyImagePath()
+    {
+        return liverKidneyImagePath;
+    }
+
+    public void setRenalInjuryImagePath(String renalInjuryImagePath)
+    {
+        this.renalInjuryImagePath = renalInjuryImagePath;
+    }
+
+    public String getRenalInjuryImagePath()
+    {
+        return renalInjuryImagePath;
+    }
+
+    public void setTcmDiagnosis(String tcmDiagnosis)
     {
         this.tcmDiagnosis = tcmDiagnosis;
     }
 
-    public String getTcmDiagnosis() 
+    public String getTcmDiagnosis()
     {
         return tcmDiagnosis;
     }
 
-    public void setTcmTreatment(String tcmTreatment) 
+    public void setTcmTreatment(String tcmTreatment)
     {
         this.tcmTreatment = tcmTreatment;
     }
 
-    public String getTcmTreatment() 
+    public String getTcmTreatment()
     {
         return tcmTreatment;
     }
 
-    public void setTcmExternalPrescription(String tcmExternalPrescription) 
+    public void setTcmTreatmentImagePath(String tcmTreatmentImagePath)
+    {
+        this.tcmTreatmentImagePath = tcmTreatmentImagePath;
+    }
+
+    public String getTcmTreatmentImagePath()
+    {
+        return tcmTreatmentImagePath;
+    }
+
+    public void setTcmExternalPrescription(String tcmExternalPrescription)
     {
         this.tcmExternalPrescription = tcmExternalPrescription;
     }
 
-    public String getTcmExternalPrescription() 
+    public String getTcmExternalPrescription()
     {
         return tcmExternalPrescription;
     }
@@ -300,26 +385,32 @@ public class PatientVisitInfo extends BaseEntity
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
-            .append("visitId", getVisitId())
-            .append("name", getName())
-            .append("gender", getGender())
-            .append("birthDate", getBirthDate())
-            .append("visitTime", getVisitTime())
-            .append("hospital", getHospital())
-            .append("medicalRecordNo", getMedicalRecordNo())
-            .append("parentName", getParentName())
-            .append("phone", getPhone())
-            .append("pastMedication", getPastMedication())
-            .append("chiefComplaint", getChiefComplaint())
-            .append("mainSymptom", getMainSymptom())
-            .append("comorbidity", getComorbidity())
-            .append("physicalExam", getPhysicalExam())
-            .append("tonguePulse", getTonguePulse())
-            .append("allergenTotalIge", getAllergenTotalIge())
-            .append("allergenSpecificIge", getAllergenSpecificIge())
-            .append("tcmDiagnosis", getTcmDiagnosis())
-            .append("tcmTreatment", getTcmTreatment())
-            .append("tcmExternalPrescription", getTcmExternalPrescription())
-            .toString();
+                .append("visitId", getVisitId())
+                .append("name", getName())
+                .append("gender", getGender())
+                .append("birthDate", getBirthDate())
+                .append("visitTime", getVisitTime())
+                .append("hospital", getHospital())
+                .append("medicalRecordNo", getMedicalRecordNo())
+                .append("parentName", getParentName())
+                .append("phone", getPhone())
+                .append("pastMedication", getPastMedication())
+                .append("chiefComplaint", getChiefComplaint())
+                .append("mainSymptom", getMainSymptom())
+                .append("comorbidity", getComorbidity())
+                .append("physicalExam", getPhysicalExam())
+                .append("tonguePulse", getTonguePulse())
+                .append("tongueImagePath", getTongueImagePath())
+                .append("allergenTotalIge", getAllergenTotalIge())
+                .append("allergenSpecificIge", getAllergenSpecificIge())
+                .append("bloodTestImagePath", getBloodTestImagePath())
+                .append("inflammationImagePath", getInflammationImagePath())
+                .append("liverKidneyImagePath", getLiverKidneyImagePath())
+                .append("renalInjuryImagePath", getRenalInjuryImagePath())
+                .append("tcmDiagnosis", getTcmDiagnosis())
+                .append("tcmTreatment", getTcmTreatment())
+                .append("tcmTreatmentImagePath", getTcmTreatmentImagePath())
+                .append("tcmExternalPrescription", getTcmExternalPrescription())
+                .toString();
     }
 }
