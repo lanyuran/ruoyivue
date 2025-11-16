@@ -43,6 +43,8 @@ export function delInformation(visitId) {
   })
 }
 
+
+
 // 导入鼻炎患者就诊信息（Excel）
 export function importInformationExcel(data) {
   return request({
