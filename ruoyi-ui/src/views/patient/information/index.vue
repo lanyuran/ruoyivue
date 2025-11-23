@@ -108,75 +108,9 @@
       <el-table-column type="selection" width="55" align="center" />
       <el-table-column label="序号" align="center" prop="visitId" width="80" />
       <el-table-column label="姓名" align="center" prop="name" />
-      <el-table-column label="性别" align="center" prop="gender" />
-      <el-table-column label="出生日期" align="center" prop="birthDate" width="130"  >
-        <template slot-scope="scope" :disabled="isReadonly">
-          {{ parseTime(scope.row.birthDate, '{y}-{m}-{d}') }}
-        </template>
-      </el-table-column>
-      <el-table-column label="就诊日期" align="center" prop="visitTime" width="130" >
-        <template slot-scope="scope" :disabled="isReadonly">
-          {{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}
-        </template>
-      </el-table-column>
-      <el-table-column label="医院" align="center" prop="hospital" />
       <el-table-column label="病历号" align="center" prop="medicalRecordNo" />
-      <el-table-column label="家长姓名" align="center" prop="parentName" />
-      <el-table-column label="联系电话" align="center" prop="phone" />
-      <el-table-column label="既往用药史" align="center" prop="pastMedication" />
-      <el-table-column label="主诉" align="center" prop="chiefComplaint" />
-      <el-table-column label="主证" align="center" prop="mainSymptom" />
-      <el-table-column label="共患病" align="center" prop="comorbidity" />
-      <el-table-column label="体格检查" align="center" prop="physicalExam" />
-      <el-table-column label="舌脉" align="center" prop="tonguePulse" />
-
-      <!-- 图片预览 -->
-      <el-table-column label="舌象照片" align="center" prop="tongueImagePath">
-        <template slot-scope="scope">
-          <el-image
-            v-if="scope.row.tongueImagePath"
-            style="width:80px;height:80px"
-            :src="scope.row.tongueImagePath"
-            :preview-src-list="[scope.row.tongueImagePath]"
-          />
-        </template>
-      </el-table-column>
-
-      <el-table-column label="总 IgE" align="center" prop="allergenTotalIge" />
-      <el-table-column label="特异性 IgE" align="center" prop="allergenSpecificIge" />
-
-      <!-- 各种报告图片 -->
-      <el-table-column label="血常规" align="center" prop="bloodTestImagePath">
-        <preview-image :url="scope.row.bloodTestImagePath" slot-scope="scope" />
-      </el-table-column>
-
-      <el-table-column label="炎症因子" align="center" prop="inflammationImagePath">
-        <preview-image :url="scope.row.inflammationImagePath" slot-scope="scope" />
-      </el-table-column>
-
-      <el-table-column label="肝肾功能" align="center" prop="liverKidneyImagePath">
-        <preview-image :url="scope.row.liverKidneyImagePath" slot-scope="scope" />
-      </el-table-column>
-
-      <el-table-column label="肾损伤" align="center" prop="renalInjuryImagePath">
-        <preview-image :url="scope.row.renalInjuryImagePath" slot-scope="scope" />
-      </el-table-column>
-
-      <el-table-column label="中医诊断" align="center" prop="tcmDiagnosis" />
-      <el-table-column label="中医治法" align="center" prop="tcmTreatment" />
-
-      <el-table-column label="处方照片" align="center" prop="tcmTreatmentImagePath">
-        <template slot-scope="scope">
-          <el-image
-            v-if="scope.row.tcmTreatmentImagePath"
-            style="width:80px;height:80px"
-            :src="scope.row.tcmTreatmentImagePath"
-            :preview-src-list="[scope.row.tcmTreatmentImagePath]"
-          />
-        </template>
-      </el-table-column>
-
-      <el-table-column label="外治处方" align="center" prop="tcmExternalPrescription" />
+      <el-table-column label="就诊医院" align="center" prop="hospital" />
+      <el-table-column label="主诉" align="center" prop="chiefComplaint" show-overflow-tooltip />
 
       <el-table-column label="操作" align="center" width="150">
         <template slot-scope="scope">
