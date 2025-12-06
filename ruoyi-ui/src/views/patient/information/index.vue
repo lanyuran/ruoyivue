@@ -188,10 +188,36 @@
 
         <!-- 图片上传组件 -->
         <el-form-item label="舌象照片">
-          <el-upload :action="uploadUrl" :on-success="(res)=>handleUpload(res,'tongueImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(res) => handleUploadSuccess(res, 'tongueImagePath')"
+            :on-remove="() => handleRemove('tongueImagePath')"
+            :before-upload="beforeAvatarUpload"
+            list-type="picture-card"
+            :file-list="tongueImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
+            <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过2MB</div>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.tongueImagePath && form.tongueImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.tongueImagePath)"
+              :preview-src-list="[getImageUrl(form.tongueImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
+
 
         <el-form-item label="总 IgE">
           <el-input v-model="form.allergenTotalIge" :disabled="isReadonly"/>
@@ -203,27 +229,119 @@
 
         <!-- 统一报告上传 -->
         <el-form-item label="血常规报告">
-          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'bloodTestImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(r)=>handleUploadSuccess(r,'bloodTestImagePath')"
+            :on-remove="() => handleRemove('bloodTestImagePath')"
+            list-type="picture-card"
+            :file-list="bloodTestImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.bloodTestImagePath && form.bloodTestImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.bloodTestImagePath)"
+              :preview-src-list="[getImageUrl(form.bloodTestImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="炎症因子报告">
-          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'inflammationImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(r)=>handleUploadSuccess(r,'inflammationImagePath')"
+            :on-remove="() => handleRemove('inflammationImagePath')"
+            list-type="picture-card"
+            :file-list="inflammationImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.inflammationImagePath && form.inflammationImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.inflammationImagePath)"
+              :preview-src-list="[getImageUrl(form.inflammationImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="肝肾功能">
-          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'liverKidneyImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(r)=>handleUploadSuccess(r,'liverKidneyImagePath')"
+            :on-remove="() => handleRemove('liverKidneyImagePath')"
+            list-type="picture-card"
+            :file-list="liverKidneyImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.liverKidneyImagePath && form.liverKidneyImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.liverKidneyImagePath)"
+              :preview-src-list="[getImageUrl(form.liverKidneyImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="肾早期损伤">
-          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'renalInjuryImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(r)=>handleUploadSuccess(r,'renalInjuryImagePath')"
+            :on-remove="() => handleRemove('renalInjuryImagePath')"
+            list-type="picture-card"
+            :file-list="renalInjuryImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.renalInjuryImagePath && form.renalInjuryImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.renalInjuryImagePath)"
+              :preview-src-list="[getImageUrl(form.renalInjuryImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="中医诊断">
@@ -235,9 +353,32 @@
         </el-form-item>
 
         <el-form-item label="处方照片">
-          <el-upload :action="uploadUrl" :on-success="(r)=>handleUpload(r,'tcmTreatmentImagePath')" list-type="picture-card" :disabled="isReadonly">
+          <el-upload
+            v-if="!isReadonly"
+            :action="uploadUrl"
+            :headers="uploadHeaders"
+            :on-success="(r)=>handleUploadSuccess(r,'tcmTreatmentImagePath')"
+            :on-remove="() => handleRemove('tcmTreatmentImagePath')"
+            list-type="picture-card"
+            :file-list="tcmTreatmentImageList"
+            :limit="1"
+            :on-exceed="handleExceed"
+            :disabled="isReadonly">
             <i class="el-icon-plus"></i>
           </el-upload>
+          <div v-else>
+            <el-image
+              v-if="form.tcmTreatmentImagePath && form.tcmTreatmentImagePath !== ''"
+              style="width: 148px; height: 148px; border-radius: 6px; margin-right: 10px;"
+              :src="getImageUrl(form.tcmTreatmentImagePath)"
+              :preview-src-list="[getImageUrl(form.tcmTreatmentImagePath)]"
+            >
+              <div slot="error" class="image-slot">
+                <span style="display: flex; justify-content: center; align-items: center; height: 100%; color: #909399; background: #f5f7fa;">未录入</span>
+              </div>
+            </el-image>
+            <span v-else style="color: #909399;">未录入</span>
+          </div>
         </el-form-item>
 
         <el-form-item label="中医外治处方">
@@ -339,7 +480,17 @@ export default {
         tcmExternalPrescription: [
           { required: true, message: "中医外治处方不能为空", trigger: "blur" }
         ]
-      }
+      },
+      uploadUrl: process.env.VUE_APP_BASE_API + '/common/upload',
+      uploadHeaders: {
+        Authorization: 'Bearer ' + this.$store.getters.token // 如果需要token验证
+      },
+      tongueImageList: [], // 舌象照片列表
+      bloodTestImageList: [],
+      inflammationImageList: [],
+      liverKidneyImageList: [],
+      renalInjuryImageList: [],
+      tcmTreatmentImageList: [],
     }
   },
   created() {
@@ -373,12 +524,24 @@ export default {
         comorbidity: null,
         physicalExam: null,
         tonguePulse: null,
+        tongueImagePath: null,
+        bloodTestImagePath: null,
+        inflammationImagePath: null,
+        liverKidneyImagePath: null,
+        renalInjuryImagePath: null,
+        tcmTreatmentImagePath: null,
         allergenTotalIge: null,
         allergenSpecificIge: null,
         tcmDiagnosis: null,
         tcmTreatment: null,
         tcmExternalPrescription: null
       }
+      this.tongueImageList = [];
+      this.bloodTestImageList = [];
+      this.inflammationImageList = [];
+      this.liverKidneyImageList = [];
+      this.renalInjuryImageList = [];
+      this.tcmTreatmentImageList = [];
       this.resetForm("form")
     },
     /** 搜索按钮操作 */
@@ -441,6 +604,7 @@ export default {
         this.form = response.data
         this.open = true
         this.title = "修改鼻炎患者就诊信息主（包含文档中所有字段）"
+        this.initImageLists();
         // 在DOM更新后清除只读模式
         this.$nextTick(() => {
           this.setFormReadonly(false);
@@ -506,6 +670,9 @@ export default {
         this.form = response.data;
         this.title = "患者就诊详细信息";
         this.open = true;
+        // 初始化图片列表
+        this.initImageLists();
+
         // 设置表单为只读模式
         this.setFormReadonly(true);
       })
@@ -521,9 +688,69 @@ export default {
     },
     setFormReadonly(readonly) {
       this.isReadonly = readonly;
+    },
+    // 获取完整图片URL
+    getImageUrl(path) {
+      if (!path) return '';
+      // 如果已经是完整URL，直接返回
+      if (path.startsWith('http') || path.startsWith('https') || path.startsWith('data:')) {
+        return path;
+      }
+      // 否则添加基础URL
+      return process.env.VUE_APP_BASE_API + path;
+    },
+    // 初始化图片列表
+    initImageLists() {
+      this.tongueImageList = this.getImageList(this.form.tongueImagePath, '舌象照片');
+      this.bloodTestImageList = this.getImageList(this.form.bloodTestImagePath, '血常规报告');
+      this.inflammationImageList = this.getImageList(this.form.inflammationImagePath, '炎症因子报告');
+      this.liverKidneyImageList = this.getImageList(this.form.liverKidneyImagePath, '肝肾功能');
+      this.renalInjuryImageList = this.getImageList(this.form.renalInjuryImagePath, '肾早期损伤');
+      this.tcmTreatmentImageList = this.getImageList(this.form.tcmTreatmentImagePath, '处方照片');
+    },
+    getImageList(path, name) {
+      return path ? [{ name: name, url: this.getImageUrl(path) }] : [];
+    },
+    // 图片上传前的处理
+beforeAvatarUpload(file) {
+    const isJPG = file.type === 'image/jpeg' || file.type === 'image/png';
+    const isLt2M = file.size / 1024 / 1024 < 2;
+
+    if (!isJPG) {
+      this.$message.error('上传图片只能是 JPG/PNG 格式!');
     }
+    if (!isLt2M) {
+      this.$message.error('上传图片大小不能超过 2MB!');
+    }
+    return isJPG && isLt2M;
+  },
+
+// 处理上传成功
+  handleUploadSuccess(response, field) {
+    if (response.code === 200) {
+    this.form[field] = response.fileName; // 假设后端返回文件路径
+    this.$message.success('上传成功');
+  } else {
+    this.$message.error(response.msg || '上传失败');
+  }
+},
+
+// 处理移除图片
+handleRemove(field) {
+  this.form[field] = ''; // 清空对应的图片路径
+},
+
+// 处理超出文件限制
+handleExceed() {
+  this.$message.warning('只能上传一张图片');
+},
 
 
   }
 }
 </script>
+<style scoped>
+::v-deep .el-upload-list__item-status-label {
+  display: none !important;
+}
+</style>

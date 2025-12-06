@@ -24,11 +24,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="allergenSpecificIge"    column="allergen_specific_ige"    />
         <result property="tcmDiagnosis"    column="tcm_diagnosis"    />
         <result property="tcmTreatment"    column="tcm_treatment"    />
+        <result property="tcmTreatmentImagePath"    column="tcm_treatment_image_path"    />
         <result property="tcmExternalPrescription"    column="tcm_external_prescription"    />
+        <result property="tongueImagePath"    column="tongue_image_path"    />
+        <result property="bloodTestImagePath"    column="blood_test_image_path"    />
+        <result property="inflammationImagePath"    column="inflammation_image_path"    />
+        <result property="liverKidneyImagePath"    column="liver_kidney_image_path"    />
+        <result property="renalInjuryImagePath"    column="renal_injury_image_path"    />
     </resultMap>
 
     <sql id="selectPatientVisitInfoVo">
-        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription from patient_visit_info
+        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription, tongue_image_path, blood_test_image_path, inflammation_image_path, liver_kidney_image_path, renal_injury_image_path, tcm_treatment_image_path from patient_visit_info
     </sql>
 
     <select id="selectPatientVisitInfoList" parameterType="PatientVisitInfo" resultMap="PatientVisitInfoResult">
@@ -68,7 +74,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="allergenSpecificIge != null">allergen_specific_ige,</if>
             <if test="tcmDiagnosis != null and tcmDiagnosis != ''">tcm_diagnosis,</if>
             <if test="tcmTreatment != null and tcmTreatment != ''">tcm_treatment,</if>
+            <if test="tcmTreatmentImagePath != null and tcmTreatmentImagePath != ''">tcm_treatment_image_path,</if>
             <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">tcm_external_prescription,</if>
+            <if test="tongueImagePath != null and tongueImagePath != ''">tongue_image_path,</if>
+            <if test="bloodTestImagePath != null and bloodTestImagePath != ''">blood_test_image_path,</if>
+            <if test="inflammationImagePath != null and inflammationImagePath != ''">inflammation_image_path,</if>
+            <if test="liverKidneyImagePath != null and liverKidneyImagePath != ''">liver_kidney_image_path,</if>
+            <if test="renalInjuryImagePath != null and renalInjuryImagePath != ''">renal_injury_image_path,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -89,7 +101,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="allergenSpecificIge != null">#{allergenSpecificIge},</if>
             <if test="tcmDiagnosis != null and tcmDiagnosis != ''">#{tcmDiagnosis},</if>
             <if test="tcmTreatment != null and tcmTreatment != ''">#{tcmTreatment},</if>
+            <if test="tcmTreatmentImagePath != null and tcmTreatmentImagePath != ''">#{tcmTreatmentImagePath},</if>
             <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">#{tcmExternalPrescription},</if>
+            <if test="tongueImagePath != null and tongueImagePath != ''">#{tongueImagePath},</if>
+            <if test="bloodTestImagePath != null and bloodTestImagePath != ''">#{bloodTestImagePath},</if>
+            <if test="inflammationImagePath != null and inflammationImagePath != ''">#{inflammationImagePath},</if>
+            <if test="liverKidneyImagePath != null and liverKidneyImagePath != ''">#{liverKidneyImagePath},</if>
+            <if test="renalInjuryImagePath != null and renalInjuryImagePath != ''">#{renalInjuryImagePath},</if>
          </trim>
     </insert>
 
@@ -114,7 +132,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="allergenSpecificIge != null">allergen_specific_ige = #{allergenSpecificIge},</if>
             <if test="tcmDiagnosis != null and tcmDiagnosis != ''">tcm_diagnosis = #{tcmDiagnosis},</if>
             <if test="tcmTreatment != null and tcmTreatment != ''">tcm_treatment = #{tcmTreatment},</if>
+            <if test="tcmTreatmentImagePath != null and tcmTreatmentImagePath != ''">tcm_treatment_image_path = #{tcmTreatmentImagePath},</if>
             <if test="tcmExternalPrescription != null and tcmExternalPrescription != ''">tcm_external_prescription = #{tcmExternalPrescription},</if>
+            <if test="tongueImagePath != null and tongueImagePath != ''">tongue_image_path = #{tongueImagePath},</if>
+            <if test="bloodTestImagePath != null and bloodTestImagePath != ''">blood_test_image_path = #{bloodTestImagePath},</if>
+            <if test="inflammationImagePath != null and inflammationImagePath != ''">inflammation_image_path = #{inflammationImagePath},</if>
+            <if test="liverKidneyImagePath != null and liverKidneyImagePath != ''">liver_kidney_image_path = #{liverKidneyImagePath},</if>
+            <if test="renalInjuryImagePath != null and renalInjuryImagePath != ''">renal_injury_image_path = #{renalInjuryImagePath},</if>
         </trim>
         where visit_id = #{visitId}
     </update>

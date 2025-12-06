@@ -32,14 +32,7 @@ import org.apache.poi.xssf.usermodel.XSSFShape;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -51,13 +44,16 @@ import com.ruoyi.patient.domain.PatientVisitExportVO;
 import com.ruoyi.patient.service.IPatientVisitInfoService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import java.io.File;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
+import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.constant.Constants;
 
-/**
- * 鼻炎患者就诊信息主（包含文档中所有字段）Controller
- * 
- * @author ruoyi
- * @date 2025-10-21
- */
+
+
 @RestController
 @RequestMapping("/patient/information")
 public class PatientVisitInfoController extends BaseController
@@ -222,12 +218,15 @@ public class PatientVisitInfoController extends BaseController
         {
             return new ExcelImportContext(imageInfos, dataRows);
         }
-        Path cacheRoot = Paths.get("image-cache");
-        Files.createDirectories(cacheRoot);
-        String dirName = IMAGE_DIR_FORMATTER.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().replace("-", "");
-        Path targetDir = cacheRoot.resolve(dirName);
-        Files.createDirectories(targetDir);
-        String relativeDir = "image-cache/" + dirName + "/";
+        String importPath = "/import/" + IMAGE_DIR_FORMATTER.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().replace("-", "");
+        String absolutePath = RuoYiConfig.getProfile() + importPath;
+        File targetDirFile = new File(absolutePath);
+        if (!targetDirFile.exists())
+        {
+            targetDirFile.mkdirs();
+        }
+        Path targetDir = targetDirFile.toPath();
+        String relativeDir = Constants.RESOURCE_PREFIX + importPath + "/";
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(fileBytes)))
         {
             Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
@@ -400,6 +399,10 @@ public class PatientVisitInfoController extends BaseController
                 continue;
             }
             PictureData pictureData = picture.getPictureData();
+            if (pictureData == null || pictureData.getData() == null || pictureData.getData().length == 0)
+            {
+                continue;
+            }
             String path = writePictureBytes(pictureData, targetDir, relativeDir, counter[0]++);
             container.add(new ExcelImageInfo(anchor.getRow1(), anchor.getCol1(), getHeader(headers, anchor.getCol1()), path));
         }
@@ -427,6 +430,10 @@ public class PatientVisitInfoController extends BaseController
                 continue;
             }
             PictureData pictureData = picture.getPictureData();
+            if (pictureData == null || pictureData.getData() == null || pictureData.getData().length == 0)
+            {
+                continue;
+            }
             String path = writePictureBytes(pictureData, targetDir, relativeDir, counter[0]++);
             container.add(new ExcelImageInfo(anchor.getRow1(), anchor.getCol1(), getHeader(headers, anchor.getCol1()), path));
         }
