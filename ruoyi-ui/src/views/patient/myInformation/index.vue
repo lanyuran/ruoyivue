@@ -399,10 +399,10 @@
 </template>
 
 <script>
-import { listInformation, getInformation, delInformation, addInformation, updateInformation, importInformationExcel } from "@/api/patient/information"
+import { listMyInformation, getInformation, delInformation, addInformation, updateInformation, importInformationExcel } from "@/api/patient/information"
 
 export default {
-  name: "Information",
+  name: "MyInformation",
   data() {
     return {
       // 遮罩层
@@ -500,7 +500,7 @@ export default {
     /** 查询鼻炎患者就诊信息主（包含文档中所有字段）列表 */
     getList() {
       this.loading = true
-      listInformation(this.queryParams).then(response => {
+      listMyInformation(this.queryParams).then(response => {
         this.informationList = response.rows
         this.total = response.total
         this.loading = false

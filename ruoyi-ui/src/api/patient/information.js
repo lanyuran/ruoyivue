@@ -9,6 +9,15 @@ export function listInformation(query) {
   })
 }
 
+// 查询我的鼻炎患者就诊信息列表
+export function listMyInformation(query) {
+  return request({
+    url: '/patient/information/listMy',
+    method: 'get',
+    params: query
+  })
+}
+
 // 查询鼻炎患者就诊信息主（包含文档中所有字段）详细
 export function getInformation(visitId) {
   return request({

@@ -88,9 +88,22 @@ public class PatientVisitInfoController extends BaseController
     }
 
     /**
+     * 查询我的鼻炎患者就诊信息列表
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:list')")
+    @GetMapping("/listMy")
+    public TableDataInfo listMy(PatientVisitInfo patientVisitInfo)
+    {
+        startPage();
+        patientVisitInfo.setCreateBy(getUsername());
+        List<PatientVisitInfo> list = patientVisitInfoService.selectPatientVisitInfoList(patientVisitInfo);
+        return getDataTable(list);
+    }
+
+    /**
      * 导入鼻炎患者就诊信息（Excel）
      */
-    @PreAuthorize("@ss.hasPermi('patient:information:excel_add')")
+    @PreAuthorize("@ss.hasPermi('patient:information:add')")
     @Log(title = "鼻炎患者就诊信息主（包含文档中所有字段）", businessType = BusinessType.IMPORT)
     @PostMapping("/importData")
     public AjaxResult importData(MultipartFile file) throws Exception
@@ -185,6 +198,7 @@ public class PatientVisitInfoController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody PatientVisitInfo patientVisitInfo)
     {
+        patientVisitInfo.setCreateBy(getUsername());
         return toAjax(patientVisitInfoService.insertPatientVisitInfo(patientVisitInfo));
     }
 

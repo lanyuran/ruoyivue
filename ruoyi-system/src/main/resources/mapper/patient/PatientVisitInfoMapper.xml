@@ -34,7 +34,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectPatientVisitInfoVo">
-        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription, tongue_image_path, blood_test_image_path, inflammation_image_path, liver_kidney_image_path, renal_injury_image_path, tcm_treatment_image_path from patient_visit_info
+        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription, tongue_image_path, blood_test_image_path, inflammation_image_path, liver_kidney_image_path, renal_injury_image_path, tcm_treatment_image_path, create_by from patient_visit_info
     </sql>
 
     <select id="selectPatientVisitInfoList" parameterType="PatientVisitInfo" resultMap="PatientVisitInfoResult">
@@ -45,6 +45,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="medicalRecordNo != null  and medicalRecordNo != ''"> and medical_record_no like concat('%', #{medicalRecordNo}, '%')</if>
             <if test="phone != null  and phone != ''"> and phone like concat('%', #{phone}, '%')</if>
             <if test="mainSymptom != null  and mainSymptom != ''"> and main_symptom like concat('%', #{mainSymptom}, '%')</if>
+            <if test="createBy != null  and createBy != ''"> and create_by = #{createBy}</if>
         </where>
     </select>
     
@@ -81,6 +82,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="inflammationImagePath != null and inflammationImagePath != ''">inflammation_image_path,</if>
             <if test="liverKidneyImagePath != null and liverKidneyImagePath != ''">liver_kidney_image_path,</if>
             <if test="renalInjuryImagePath != null and renalInjuryImagePath != ''">renal_injury_image_path,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
@@ -108,6 +110,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="inflammationImagePath != null and inflammationImagePath != ''">#{inflammationImagePath},</if>
             <if test="liverKidneyImagePath != null and liverKidneyImagePath != ''">#{liverKidneyImagePath},</if>
             <if test="renalInjuryImagePath != null and renalInjuryImagePath != ''">#{renalInjuryImagePath},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
          </trim>
     </insert>
 
