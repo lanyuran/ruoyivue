@@ -87,6 +87,34 @@ export const constantRoutes = [
         meta: { title: '个人中心', icon: 'user' }
       }
     ]
+  },
+  {
+    path: '/survey',
+    component: Layout,
+    redirect: '/survey/list',
+    hidden: true,
+    children: [
+      {
+        path: 'list',
+        component: () => import('@/views/survey/list/index'),
+        name: 'SurveyList',
+        meta: { title: '问卷列表', icon: 'list' }
+      },
+      {
+        path: 'form',
+        component: () => import('@/views/survey/form/index'),
+        name: 'SurveyForm',
+        meta: { title: '问卷设计', icon: 'edit' },
+        hidden: true
+      },
+      {
+        path: 'form/:surveyId',
+        component: () => import('@/views/survey/form/index'),
+        name: 'SurveyFormEdit',
+        meta: { title: '问卷编辑', icon: 'edit' },
+        hidden: true
+      }
+    ]
   }
 ]
 
