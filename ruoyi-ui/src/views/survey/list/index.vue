@@ -114,6 +114,9 @@
             <div style="margin-top: 10px;">
                 <el-link :href="shareLink" target="_blank" type="primary">{{ shareLink }}</el-link>
             </div>
+            <div style="margin-top: 20px;">
+                <el-button type="primary" size="small" icon="el-icon-download" @click="downloadQrCode">下载二维码</el-button>
+            </div>
         </div>
         <div slot="footer" class="dialog-footer">
             <el-button @click="shareOpen = false">关 闭</el-button>
@@ -219,6 +222,37 @@ export default {
         // 使用 QR Server 生成二维码
         this.qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(baseUrl);
         this.shareOpen = true;
+    },
+    /** 下载二维码 */
+    downloadQrCode() {
+        if (!this.qrCodeUrl) return;
+        
+        // 创建一个 Image 对象
+        const image = new Image();
+        image.crossOrigin = "Anonymous"; // 解决跨域问题
+        image.src = this.qrCodeUrl;
+        image.onload = () => {
+            // 创建 canvas
+            const canvas = document.createElement("canvas");
+            canvas.width = image.width;
+            canvas.height = image.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(image, 0, 0);
+            
+            // 转换为 dataURL
+            const dataURL = canvas.toDataURL("image/png");
+            
+            // 创建下载链接
+            const link = document.createElement("a");
+            link.href = dataURL;
+            link.download = this.shareTitle + "_二维码.png";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+        image.onerror = () => {
+            this.$modal.msgError("二维码下载失败，请重试");
+        };
     }
   }
 };

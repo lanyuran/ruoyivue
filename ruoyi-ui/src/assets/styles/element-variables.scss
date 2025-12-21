@@ -1,23 +1,34 @@
 /**
-* I think element-ui's default theme color is too light for long-term use.
-* So I modified the default color and you can modify it to your liking.
+* Modernized Theme Variables
 **/
 
-/* theme color */
-$--color-primary: #1890ff;
-$--color-success: #13ce66;
-$--color-warning: #ffba00;
-$--color-danger: #ff4949;
-// $--color-info: #1E1E1E;
+/* theme color - 使用更现代的蓝色 */
+$--color-primary: #1890ff; 
+$--color-success: #52c41a;
+$--color-warning: #faad14;
+$--color-danger: #ff4d4f;
+$--color-info: #909399;
 
-$--button-font-weight: 400;
+$--button-font-weight: 500;
+$--button-border-radius: 4px;
 
-// $--color-text-regular: #1f2d3d;
+/* 增加圆角，更柔和 */
+$--border-radius-base: 4px;
+$--border-radius-small: 2px;
 
-$--border-color-light: #dfe4ed;
-$--border-color-lighter: #e6ebf5;
+/* 字体优化 */
+$--font-size-base: 14px;
+$--font-color-base: #303133;
+$--font-color-regular: #606266;
+$--font-color-secondary: #909399;
 
-$--table-border: 1px solid #dfe6ec;
+$--border-color-base: #dcdfe6;
+$--border-color-light: #e4e7ed;
+$--border-color-lighter: #ebeef5;
+$--border-color-extra-light: #f2f6fc;
+
+$--table-border: 1px solid #ebeef5;
+$--table-header-background-color: #f5f7fa;
 
 /* icon font path, required */
 $--font-path: '~element-ui/lib/theme-chalk/fonts';
@@ -25,7 +36,6 @@ $--font-path: '~element-ui/lib/theme-chalk/fonts';
 @import "~element-ui/packages/theme-chalk/src/index";
 
 // the :export directive is the magic sauce for webpack
-// https://www.bluematador.com/blog/how-to-share-variables-between-js-and-sass
 :export {
   theme: $--color-primary;
 }
