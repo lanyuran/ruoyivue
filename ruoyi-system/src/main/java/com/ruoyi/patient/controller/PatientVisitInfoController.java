@@ -37,13 +37,21 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.TreeSelect;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.core.domain.entity.SysRole;
+import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.core.domain.entity.SysDept;
+import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.patient.domain.PatientVisitInfo;
 import com.ruoyi.patient.domain.PatientVisitExportVO;
 import com.ruoyi.patient.service.IPatientVisitInfoService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.system.service.ISysDeptService;
 import java.io.File;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -74,6 +82,15 @@ public class PatientVisitInfoController extends BaseController
 
     @Autowired
     private IPatientVisitInfoService patientVisitInfoService;
+
+    @Autowired
+    private ISysDeptService deptService;
+
+    private static final String ROLE_KEY_DEPT_DOCTOR = "dept_doctor";
+
+    private static final String ROLE_KEY_DEPT_MANAGER = "dept_manager";
+
+    private static final String ROLE_KEY_CAMPUS_MANAGER = "campus_manager";
 
     /**
      * 查询鼻炎患者就诊信息主（包含文档中所有字段）列表
@@ -139,6 +156,35 @@ public class PatientVisitInfoController extends BaseController
     }
 
     /**
+     * 获取医院下拉选项
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:list')")
+    @GetMapping("/hospitalOptions")
+    public AjaxResult hospitalOptions()
+    {
+        SysDept dept = new SysDept();
+        dept.setStatus("0");
+        List<TreeSelect> deptTree = deptService.selectDeptTreeListPublic(dept);
+        TreeSelect hospitalRoot = findHospitalRootNode(deptTree);
+        List<Map<String, Object>> options = new ArrayList<>();
+        if (hospitalRoot != null && hospitalRoot.getChildren() != null)
+        {
+            for (TreeSelect child : hospitalRoot.getChildren())
+            {
+                if (child == null)
+                {
+                    continue;
+                }
+                Map<String, Object> option = new HashMap<>();
+                option.put("deptId", child.getId());
+                option.put("deptName", child.getLabel());
+                options.add(option);
+            }
+        }
+        return success(options);
+    }
+
+    /**
      * 导出鼻炎患者就诊信息主（包含文档中所有字段）列表
      */
     @PreAuthorize("@ss.hasPermi('patient:information:export')")
@@ -187,7 +233,14 @@ public class PatientVisitInfoController extends BaseController
     @GetMapping(value = "/{visitId}")
     public AjaxResult getInfo(@PathVariable("visitId") Long visitId)
     {
-        return success(patientVisitInfoService.selectPatientVisitInfoByVisitId(visitId));
+        PatientVisitInfo query = new PatientVisitInfo();
+        query.setVisitId(visitId);
+        List<PatientVisitInfo> list = patientVisitInfoService.selectPatientVisitInfoList(query);
+        if (list == null || list.isEmpty())
+        {
+            return error("没有权限访问该数据");
+        }
+        return success(list.get(0));
     }
 
     /**
@@ -210,6 +263,7 @@ public class PatientVisitInfoController extends BaseController
     @PutMapping
     public AjaxResult edit(@RequestBody PatientVisitInfo patientVisitInfo)
     {
+        checkDataScope(patientVisitInfo.getVisitId());
         return toAjax(patientVisitInfoService.updatePatientVisitInfo(patientVisitInfo));
     }
 
@@ -221,7 +275,101 @@ public class PatientVisitInfoController extends BaseController
 	@DeleteMapping("/{visitIds}")
     public AjaxResult remove(@PathVariable Long[] visitIds)
     {
+        if (visitIds != null)
+        {
+            for (Long visitId : visitIds)
+            {
+                checkDataScope(visitId);
+            }
+        }
         return toAjax(patientVisitInfoService.deletePatientVisitInfoByVisitIds(visitIds));
+    }
+
+    private void checkDataScope(Long visitId)
+    {
+        if (visitId == null)
+        {
+            return;
+        }
+        PatientVisitInfo query = new PatientVisitInfo();
+        query.setVisitId(visitId);
+        List<PatientVisitInfo> list = patientVisitInfoService.selectPatientVisitInfoList(query);
+        if (list == null || list.isEmpty())
+        {
+            throw new ServiceException("没有权限访问该数据");
+        }
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null)
+        {
+            return;
+        }
+        SysUser user = loginUser.getUser();
+        if (user == null || user.isAdmin())
+        {
+            return;
+        }
+        if (hasRole(user, ROLE_KEY_CAMPUS_MANAGER))
+        {
+            return;
+        }
+        if (hasRole(user, ROLE_KEY_DEPT_MANAGER))
+        {
+            return;
+        }
+        PatientVisitInfo info = list.get(0);
+        if (hasRole(user, ROLE_KEY_DEPT_DOCTOR) && !StringUtils.equals(info.getCreateBy(), user.getUserName()))
+        {
+            throw new ServiceException("只能修改本人录入的数据");
+        }
+    }
+
+    private boolean hasRole(SysUser user, String roleKey)
+    {
+        if (user == null || StringUtils.isEmpty(roleKey) || user.getRoles() == null)
+        {
+            return false;
+        }
+        for (SysRole role : user.getRoles())
+        {
+            if (role == null || StringUtils.isEmpty(role.getRoleKey()))
+            {
+                continue;
+            }
+            String[] keys = role.getRoleKey().split(",");
+            for (String key : keys)
+            {
+                if (roleKey.equals(StringUtils.trim(key)))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private TreeSelect findHospitalRootNode(List<TreeSelect> nodes)
+    {
+        if (nodes == null)
+        {
+            return null;
+        }
+        for (TreeSelect node : nodes)
+        {
+            if (node == null)
+            {
+                continue;
+            }
+            if ("医院".equals(StringUtils.trim(node.getLabel())))
+            {
+                return node;
+            }
+            TreeSelect found = findHospitalRootNode(node.getChildren());
+            if (found != null)
+            {
+                return found;
+            }
+        }
+        return null;
     }
 
     private ExcelImportContext buildImportContext(byte[] fileBytes) throws IOException

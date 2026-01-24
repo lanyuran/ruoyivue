@@ -11,6 +11,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="birthDate"    column="birth_date"    />
         <result property="visitTime"    column="visit_time"    />
         <result property="hospital"    column="hospital"    />
+        <result property="hospitalDeptId"    column="hospital_dept_id"    />
         <result property="medicalRecordNo"    column="medical_record_no"    />
         <result property="parentName"    column="parent_name"    />
         <result property="phone"    column="phone"    />
@@ -31,27 +32,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="inflammationImagePath"    column="inflammation_image_path"    />
         <result property="liverKidneyImagePath"    column="liver_kidney_image_path"    />
         <result property="renalInjuryImagePath"    column="renal_injury_image_path"    />
+        <result property="createBy"    column="create_by"    />
     </resultMap>
 
     <sql id="selectPatientVisitInfoVo">
-        select visit_id, name, gender, birth_date, visit_time, hospital, medical_record_no, parent_name, phone, past_medication, chief_complaint, main_symptom, comorbidity, physical_exam, tongue_pulse, allergen_total_ige, allergen_specific_ige, tcm_diagnosis, tcm_treatment, tcm_external_prescription, tongue_image_path, blood_test_image_path, inflammation_image_path, liver_kidney_image_path, renal_injury_image_path, tcm_treatment_image_path, create_by from patient_visit_info
+        select p.visit_id, p.name, p.gender, p.birth_date, p.visit_time, p.hospital, p.hospital_dept_id, p.medical_record_no, p.parent_name, p.phone, p.past_medication, p.chief_complaint, p.main_symptom, p.comorbidity, p.physical_exam, p.tongue_pulse, p.allergen_total_ige, p.allergen_specific_ige, p.tcm_diagnosis, p.tcm_treatment, p.tcm_external_prescription, p.tongue_image_path, p.blood_test_image_path, p.inflammation_image_path, p.liver_kidney_image_path, p.renal_injury_image_path, p.tcm_treatment_image_path, p.create_by
+        from patient_visit_info p
+        left join sys_user u on p.create_by = u.user_name
+        left join sys_dept d on u.dept_id = d.dept_id
     </sql>
 
     <select id="selectPatientVisitInfoList" parameterType="PatientVisitInfo" resultMap="PatientVisitInfoResult">
         <include refid="selectPatientVisitInfoVo"/>
-        <where>  
-            <if test="name != null  and name != ''"> and name like concat('%', #{name}, '%')</if>
-            <if test="hospital != null  and hospital != ''"> and hospital like concat('%', #{hospital}, '%')</if>
-            <if test="medicalRecordNo != null  and medicalRecordNo != ''"> and medical_record_no like concat('%', #{medicalRecordNo}, '%')</if>
-            <if test="phone != null  and phone != ''"> and phone like concat('%', #{phone}, '%')</if>
-            <if test="mainSymptom != null  and mainSymptom != ''"> and main_symptom like concat('%', #{mainSymptom}, '%')</if>
-            <if test="createBy != null  and createBy != ''"> and create_by = #{createBy}</if>
-        </where>
+        where 1 = 1
+            <if test="visitId != null"> and p.visit_id = #{visitId}</if>
+            <if test="name != null  and name != ''"> and p.name like concat('%', #{name}, '%')</if>
+            <if test="hospital != null  and hospital != ''"> and p.hospital like concat('%', #{hospital}, '%')</if>
+            <if test="medicalRecordNo != null  and medicalRecordNo != ''"> and p.medical_record_no like concat('%', #{medicalRecordNo}, '%')</if>
+            <if test="phone != null  and phone != ''"> and p.phone like concat('%', #{phone}, '%')</if>
+            <if test="mainSymptom != null  and mainSymptom != ''"> and p.main_symptom like concat('%', #{mainSymptom}, '%')</if>
+            <if test="createBy != null  and createBy != ''"> and p.create_by = #{createBy}</if>
+            <if test="params.hospitalDeptId != null">
+                and p.hospital_dept_id = #{params.hospitalDeptId}
+            </if>
+            <if test="params.dataScope != null and params.dataScope != ''">
+                ${params.dataScope}
+            </if>
     </select>
     
     <select id="selectPatientVisitInfoByVisitId" parameterType="Long" resultMap="PatientVisitInfoResult">
         <include refid="selectPatientVisitInfoVo"/>
-        where visit_id = #{visitId}
+        where p.visit_id = #{visitId}
     </select>
 
     <insert id="insertPatientVisitInfo" parameterType="PatientVisitInfo" useGeneratedKeys="true" keyProperty="visitId">
@@ -62,6 +73,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="birthDate != null">birth_date,</if>
             <if test="visitTime != null">visit_time,</if>
             <if test="hospital != null and hospital != ''">hospital,</if>
+            <if test="hospitalDeptId != null">hospital_dept_id,</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no,</if>
             <if test="parentName != null">parent_name,</if>
             <if test="phone != null and phone != ''">phone,</if>
@@ -90,6 +102,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="birthDate != null">#{birthDate},</if>
             <if test="visitTime != null">#{visitTime},</if>
             <if test="hospital != null and hospital != ''">#{hospital},</if>
+            <if test="hospitalDeptId != null">#{hospitalDeptId},</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">#{medicalRecordNo},</if>
             <if test="parentName != null">#{parentName},</if>
             <if test="phone != null and phone != ''">#{phone},</if>
@@ -122,6 +135,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="birthDate != null">birth_date = #{birthDate},</if>
             <if test="visitTime != null">visit_time = #{visitTime},</if>
             <if test="hospital != null and hospital != ''">hospital = #{hospital},</if>
+            <if test="hospitalDeptId != null">hospital_dept_id = #{hospitalDeptId},</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no = #{medicalRecordNo},</if>
             <if test="parentName != null">parent_name = #{parentName},</if>
             <if test="phone != null and phone != ''">phone = #{phone},</if>

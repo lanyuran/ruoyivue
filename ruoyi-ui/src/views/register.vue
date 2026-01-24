@@ -20,6 +20,23 @@
         </el-input>
       </el-form-item>
 
+      <el-form-item prop="registerRole">
+        <el-radio-group v-model="registerForm.registerRole" class="register-role-group">
+          <el-radio label="user">用户级（病人）</el-radio>
+          <el-radio label="doctor">医生级</el-radio>
+        </el-radio-group>
+      </el-form-item>
+
+      <el-form-item v-if="registerForm.registerRole === 'doctor'" prop="deptId">
+        <treeselect
+          v-model="registerForm.deptId"
+          :options="deptOptions"
+          :show-count="true"
+          placeholder="请选择所属科室"
+        />
+        <div class="register-tip">医生级账号需科室主管审批，通过前按用户级权限使用。</div>
+      </el-form-item>
+
       <el-form-item prop="password">
         <el-input
           v-model="registerForm.password"
@@ -83,10 +100,13 @@
 </template>
 
 <script>
-import { getCodeImg, register } from "@/api/login"
+import { getCodeImg, getRegisterDeptTree, register } from "@/api/login"
+import Treeselect from "@riophae/vue-treeselect"
+import "@riophae/vue-treeselect/dist/vue-treeselect.css"
 
 export default {
   name: "Register",
+  components: { Treeselect },
   data() {
     const equalToPassword = (rule, value, callback) => {
       if (this.registerForm.password !== value) {
@@ -95,11 +115,21 @@ export default {
         callback()
       }
     }
+    const validateDept = (rule, value, callback) => {
+      if (this.registerForm.registerRole === "doctor" && !value) {
+        callback(new Error("请选择所属科室"))
+      } else {
+        callback()
+      }
+    }
     return {
       title: process.env.VUE_APP_TITLE,
       codeUrl: "",
+      deptOptions: [],
       registerForm: {
         username: "",
+        registerRole: "user",
+        deptId: undefined,
         password: "",
         confirmPassword: "",
         code: "",
@@ -110,6 +140,8 @@ export default {
           { required: true, trigger: "blur", message: "请输入您的账号" },
           { min: 2, max: 20, message: '用户账号长度必须介于 2 和 20 之间', trigger: 'blur' }
         ],
+        registerRole: [{ required: true, trigger: "change", message: "请选择注册身份" }],
+        deptId: [{ validator: validateDept, trigger: "change" }],
         password: [
           { required: true, trigger: "blur", message: "请输入您的密码" },
           { min: 5, max: 20, message: "用户密码长度必须介于 5 和 20 之间", trigger: "blur" },
@@ -125,6 +157,15 @@ export default {
       captchaEnabled: true
     }
   },
+  watch: {
+    "registerForm.registerRole"(value) {
+      if (value === "doctor" && this.deptOptions.length === 0) {
+        this.getDeptTree()
+      } else if (value !== "doctor") {
+        this.registerForm.deptId = undefined
+      }
+    }
+  },
   created() {
     this.getCode()
   },
@@ -138,10 +179,18 @@ export default {
         }
       })
     },
+    getDeptTree() {
+      getRegisterDeptTree().then(res => {
+        this.deptOptions = res.data || []
+      })
+    },
     handleRegister() {
       this.$refs.registerForm.validate(valid => {
         if (valid) {
           this.loading = true
+          if (this.registerForm.registerRole !== "doctor") {
+            this.registerForm.deptId = undefined
+          }
           register(this.registerForm).then(res => {
             const username = this.registerForm.username
             this.$alert("<font color='green'>恭喜你，账号 " + username + " 注册成功！</font>", '系统提示', {
@@ -237,6 +286,18 @@ export default {
     color: #2a75bb;
     font-size: 13px;
     text-decoration: underline;
+  }
+
+  .register-role-group {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .register-tip {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #909399;
   }
 }
 

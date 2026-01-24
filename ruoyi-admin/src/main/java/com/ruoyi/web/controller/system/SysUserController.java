@@ -216,6 +216,51 @@ public class SysUserController extends BaseController
     }
 
     /**
+     * 医生申请审批
+     */
+    @PreAuthorize("@ss.hasPermi('system:user:approveDoctor')")
+    @Log(title = "医生申请审批", businessType = BusinessType.UPDATE)
+    @PutMapping("/doctorApproval")
+    public AjaxResult doctorApproval(@RequestBody SysUser user)
+    {
+        if (user.getUserId() == null)
+        {
+            return error("用户编号不能为空");
+        }
+        if (!StringUtils.equalsAny(user.getApplyStatus(), "1", "2"))
+        {
+            return error("审批状态不合法");
+        }
+        userService.checkUserAllowed(user);
+        userService.checkUserDataScope(user.getUserId());
+        SysUser dbUser = userService.selectUserById(user.getUserId());
+        if (dbUser == null)
+        {
+            return error("用户不存在");
+        }
+        if (!StringUtils.equals("0", dbUser.getApplyStatus()))
+        {
+            return error("申请状态已处理");
+        }
+        if (StringUtils.isEmpty(dbUser.getApplyRoleKey()))
+        {
+            return error("没有待审批的申请");
+        }
+        user.setApplyRoleKey(dbUser.getApplyRoleKey());
+        user.setUpdateBy(getUsername());
+        int rows = userService.updateUserApplyStatus(user);
+        if (rows > 0 && StringUtils.equals("1", user.getApplyStatus()))
+        {
+            Long roleId = resolveRoleId(dbUser.getApplyRoleKey());
+            if (roleId != null)
+            {
+                userService.insertUserAuth(user.getUserId(), new Long[] { roleId });
+            }
+        }
+        return rows > 0 ? success() : error("审批失败");
+    }
+
+    /**
      * 根据用户编号获取授权角色
      */
     @PreAuthorize("@ss.hasPermi('system:user:query')")
@@ -252,5 +297,21 @@ public class SysUserController extends BaseController
     public AjaxResult deptTree(SysDept dept)
     {
         return success(deptService.selectDeptTreeList(dept));
+    }
+
+    private Long resolveRoleId(String roleKey)
+    {
+        if (StringUtils.isEmpty(roleKey))
+        {
+            return null;
+        }
+        SysRole query = new SysRole();
+        query.setRoleKey(roleKey);
+        List<SysRole> roles = roleService.selectRoleList(query);
+        if (roles == null || roles.isEmpty())
+        {
+            return null;
+        }
+        return roles.get(0).getRoleId();
     }
 }

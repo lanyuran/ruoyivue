@@ -60,6 +60,15 @@ export function importInformationExcel(data) {
     url: '/patient/information/importData',
     method: 'post',
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 10 * 60 * 1000,
     data
+  })
+}
+
+// 获取医院下拉选项
+export function listHospitalOptions() {
+  return request({
+    url: '/patient/information/hospitalOptions',
+    method: 'get'
   })
 }

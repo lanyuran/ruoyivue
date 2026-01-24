@@ -151,8 +151,30 @@
           <el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" :disabled="isReadonly"/>
         </el-form-item>
 
-        <el-form-item label="医院" prop="hospital">
-          <el-input v-model="form.hospital" :disabled="isReadonly"></el-input>
+        <el-form-item label="就诊医院" prop="hospital">
+          <el-select
+            v-model="form.hospitalDeptId"
+            placeholder="请选择就诊医院"
+            clearable
+            :disabled="isReadonly"
+            @change="handleHospitalChange"
+          >
+            <el-option
+              v-for="item in hospitalOptions"
+              :key="item.deptId"
+              :label="item.deptName"
+              :value="item.deptId"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="其他医院">
+          <el-input
+            v-model="hospitalOther"
+            placeholder="请输入其他医院"
+            :disabled="isReadonly"
+            @input="handleOtherHospitalInput"
+          />
         </el-form-item>
 
         <el-form-item label="病历号" prop="medicalRecordNo">
@@ -404,7 +426,7 @@
 </template>
 
 <script>
-import { listInformation, getInformation, delInformation, addInformation, updateInformation, importInformationExcel } from "@/api/patient/information"
+import { listMyInformation, getInformation, delInformation, addInformation, updateInformation, importInformationExcel, listHospitalOptions } from "@/api/patient/information"
 
 export default {
   name: "Information",
@@ -424,6 +446,8 @@ export default {
       total: 0,
       // 鼻炎患者就诊信息主（包含文档中所有字段）表格数据
       informationList: [],
+      hospitalOptions: [],
+      hospitalOther: "",
       // 弹出层标题
       title: "",
       // 是否显示弹出层
@@ -500,16 +524,72 @@ export default {
   },
   created() {
     this.getList()
+    this.loadHospitalOptions()
   },
   methods: {
     /** 查询鼻炎患者就诊信息主（包含文档中所有字段）列表 */
     getList() {
       this.loading = true
-      listInformation(this.queryParams).then(response => {
+      listMyInformation(this.queryParams).then(response => {
         this.informationList = response.rows
         this.total = response.total
         this.loading = false
       })
+    },
+    loadHospitalOptions() {
+      return listHospitalOptions().then(response => {
+        this.hospitalOptions = response.data || []
+      }).catch(() => {
+        this.hospitalOptions = []
+      })
+    },
+    syncHospitalSelection() {
+      if (!this.form) {
+        return
+      }
+      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
+      if (selected) {
+        this.form.hospital = selected.deptName
+        this.hospitalOther = ""
+        return
+      }
+      if (this.form.hospital) {
+        this.hospitalOther = this.form.hospital
+        this.form.hospitalDeptId = null
+      } else {
+        this.hospitalOther = ""
+      }
+    },
+    handleHospitalChange(value) {
+      const selected = this.hospitalOptions.find(item => item.deptId === value)
+      if (selected) {
+        this.form.hospital = selected.deptName
+      }
+      if (value) {
+        this.hospitalOther = ""
+      } else if (!this.hospitalOther) {
+        this.form.hospital = null
+      }
+    },
+    handleOtherHospitalInput(value) {
+      const trimmed = value ? value.trim() : ""
+      if (trimmed) {
+        this.form.hospital = trimmed
+        this.form.hospitalDeptId = null
+        return
+      }
+      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
+      this.form.hospital = selected ? selected.deptName : null
+    },
+    normalizeHospitalInput() {
+      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
+      if (selected) {
+        this.form.hospital = selected.deptName
+        this.hospitalOther = ""
+        return
+      }
+      const trimmed = this.hospitalOther ? this.hospitalOther.trim() : ""
+      this.form.hospital = trimmed || null
     },
     // 表单重置
     reset() {
@@ -520,6 +600,7 @@ export default {
         birthDate: null,
         visitTime: null,
         hospital: null,
+        hospitalDeptId: null,
         medicalRecordNo: null,
         parentName: null,
         phone: null,
@@ -541,6 +622,7 @@ export default {
         tcmTreatment: null,
         tcmExternalPrescription: null
       }
+      this.hospitalOther = ""
       this.tongueImageList = [];
       this.bloodTestImageList = [];
       this.inflammationImageList = [];
@@ -571,6 +653,7 @@ export default {
       this.setFormReadonly(false);
       this.open = true
       this.title = "添加鼻炎患者就诊信息主（包含文档中所有字段）"
+      this.loadHospitalOptions()
     },
     /** excel导入按钮操作 */
     handleExcelImport() {
@@ -610,6 +693,9 @@ export default {
         this.open = true
         this.title = "修改鼻炎患者就诊信息主（包含文档中所有字段）"
         this.initImageLists();
+        this.loadHospitalOptions().finally(() => {
+          this.syncHospitalSelection()
+        })
         // 在DOM更新后清除只读模式
         this.$nextTick(() => {
           this.setFormReadonly(false);
@@ -626,6 +712,7 @@ export default {
         return;
       }
 
+      this.normalizeHospitalInput()
       this.$refs["form"].validate(valid => {
         if (valid) {
           if (this.form.visitId != null) {
@@ -677,6 +764,9 @@ export default {
         this.open = true;
         // 初始化图片列表
         this.initImageLists();
+        this.loadHospitalOptions().finally(() => {
+          this.syncHospitalSelection()
+        })
 
         // 设置表单为只读模式
         this.setFormReadonly(true);

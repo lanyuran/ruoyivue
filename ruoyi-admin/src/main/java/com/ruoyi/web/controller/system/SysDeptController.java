@@ -72,13 +72,13 @@ public class SysDeptController extends BaseController
      * 新增部门
      */
     @PreAuthorize("@ss.hasPermi('system:dept:add')")
-    @Log(title = "部门管理", businessType = BusinessType.INSERT)
+    @Log(title = "医院管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysDept dept)
     {
         if (!deptService.checkDeptNameUnique(dept))
         {
-            return error("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
+            return error("新增医院'" + dept.getDeptName() + "'失败，医院名称已存在");
         }
         dept.setCreateBy(getUsername());
         return toAjax(deptService.insertDept(dept));
@@ -88,7 +88,7 @@ public class SysDeptController extends BaseController
      * 修改部门
      */
     @PreAuthorize("@ss.hasPermi('system:dept:edit')")
-    @Log(title = "部门管理", businessType = BusinessType.UPDATE)
+    @Log(title = "医院管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysDept dept)
     {
@@ -96,11 +96,11 @@ public class SysDeptController extends BaseController
         deptService.checkDeptDataScope(deptId);
         if (!deptService.checkDeptNameUnique(dept))
         {
-            return error("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
+            return error("修改医院'" + dept.getDeptName() + "'失败，医院名称已存在");
         }
         else if (dept.getParentId().equals(deptId))
         {
-            return error("修改部门'" + dept.getDeptName() + "'失败，上级部门不能是自己");
+            return error("修改医院'" + dept.getDeptName() + "'失败，上级医院不能是自己");
         }
         else if (StringUtils.equals(UserConstants.DEPT_DISABLE, dept.getStatus()) && deptService.selectNormalChildrenDeptById(deptId) > 0)
         {
@@ -114,17 +114,17 @@ public class SysDeptController extends BaseController
      * 删除部门
      */
     @PreAuthorize("@ss.hasPermi('system:dept:remove')")
-    @Log(title = "部门管理", businessType = BusinessType.DELETE)
+    @Log(title = "医院管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{deptId}")
     public AjaxResult remove(@PathVariable Long deptId)
     {
         if (deptService.hasChildByDeptId(deptId))
         {
-            return warn("存在下级部门,不允许删除");
+            return warn("存在下级医院,不允许删除");
         }
         if (deptService.checkDeptExistUser(deptId))
         {
-            return warn("部门存在用户,不允许删除");
+            return warn("医院存在用户,不允许删除");
         }
         deptService.checkDeptDataScope(deptId);
         return toAjax(deptService.deleteDeptById(deptId));

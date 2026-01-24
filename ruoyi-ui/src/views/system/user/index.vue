@@ -28,6 +28,11 @@
                   <el-option v-for="dict in dict.type.sys_normal_disable" :key="dict.value" :label="dict.label" :value="dict.value" />
                 </el-select>
               </el-form-item>
+              <el-form-item label="医生申请" prop="applyStatus">
+                <el-select v-model="queryParams.applyStatus" placeholder="审批状态" clearable style="width: 240px">
+                  <el-option v-for="item in applyStatusOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
               <el-form-item label="创建时间">
                 <el-date-picker v-model="dateRange" style="width: 240px" value-format="yyyy-MM-dd" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
               </el-form-item>
@@ -68,13 +73,34 @@
                   <el-switch v-model="scope.row.status" active-value="0" inactive-value="1" @change="handleStatusChange(scope.row)"></el-switch>
                 </template>
               </el-table-column>
+              <el-table-column label="医生申请" align="center" key="applyStatus" v-if="columns.applyStatus.visible" width="110">
+                <template slot-scope="scope">
+                  <span>{{ formatApplyStatus(scope.row) }}</span>
+                </template>
+              </el-table-column>
               <el-table-column label="创建时间" align="center" prop="createTime" v-if="columns.createTime.visible" width="160">
                 <template slot-scope="scope">
                   <span>{{ parseTime(scope.row.createTime) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" align="center" width="160" class-name="small-padding fixed-width">
+              <el-table-column label="操作" align="center" width="220" class-name="small-padding fixed-width">
                 <template slot-scope="scope" v-if="scope.row.userId !== 1">
+                  <el-button
+                    v-if="canApproveDoctor(scope.row)"
+                    size="mini"
+                    type="text"
+                    icon="el-icon-check"
+                    @click="handleDoctorApproval(scope.row, '1')"
+                    v-hasPermi="['system:user:approveDoctor']"
+                  >通过</el-button>
+                  <el-button
+                    v-if="canApproveDoctor(scope.row)"
+                    size="mini"
+                    type="text"
+                    icon="el-icon-close"
+                    @click="handleDoctorApproval(scope.row, '2')"
+                    v-hasPermi="['system:user:approveDoctor']"
+                  >驳回</el-button>
                   <el-button size="mini" type="text" icon="el-icon-edit" @click="handleUpdate(scope.row)" v-hasPermi="['system:user:edit']">修改</el-button>
                   <el-button size="mini" type="text" icon="el-icon-delete" @click="handleDelete(scope.row)" v-hasPermi="['system:user:remove']">删除</el-button>
                   <el-dropdown size="mini" @command="(command) => handleCommand(command, scope.row)" v-hasPermi="['system:user:resetPwd', 'system:user:edit']">
@@ -201,7 +227,7 @@
 </template>
 
 <script>
-import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, deptTreeSelect } from "@/api/system/user"
+import { listUser, getUser, delUser, addUser, updateUser, resetUserPwd, changeUserStatus, doctorApproval, deptTreeSelect } from "@/api/system/user"
 import { getToken } from "@/utils/auth"
 import Treeselect from "@riophae/vue-treeselect"
 import "@riophae/vue-treeselect/dist/vue-treeselect.css"
@@ -246,6 +272,11 @@ export default {
       postOptions: [],
       // 角色选项
       roleOptions: [],
+      applyStatusOptions: [
+        { label: "待审批", value: "0" },
+        { label: "已通过", value: "1" },
+        { label: "已驳回", value: "2" }
+      ],
       // 表单参数
       form: {},
       defaultProps: {
@@ -274,6 +305,8 @@ export default {
         userName: undefined,
         phonenumber: undefined,
         status: undefined,
+        applyStatus: undefined,
+        applyRoleKey: undefined,
         deptId: undefined
       },
       // 列信息
@@ -284,6 +317,7 @@ export default {
         deptName: { label: '部门', visible: true },
         phonenumber: { label: '手机号码', visible: true },
         status: { label: '状态', visible: true },
+        applyStatus: { label: '医生申请', visible: true },
         createTime: { label: '创建时间', visible: true }
       },
       // 表单校验
@@ -380,6 +414,29 @@ export default {
       }).catch(function() {
         row.status = row.status === "0" ? "1" : "0"
       })
+    },
+    formatApplyStatus(row) {
+      if (!row || row.applyRoleKey !== "dept_doctor") {
+        return "-"
+      }
+      const map = {
+        "0": "待审批",
+        "1": "已通过",
+        "2": "已驳回"
+      }
+      return map[row.applyStatus] || "待处理"
+    },
+    canApproveDoctor(row) {
+      return row && row.applyRoleKey === "dept_doctor" && row.applyStatus === "0"
+    },
+    handleDoctorApproval(row, status) {
+      const actionText = status === "1" ? "通过" : "驳回"
+      this.$modal.confirm('确认要' + actionText + '用户 "' + row.userName + '" 的医生申请吗？').then(() => {
+        return doctorApproval({ userId: row.userId, applyStatus: status })
+      }).then(() => {
+        this.$modal.msgSuccess("审批成功")
+        this.getList()
+      }).catch(() => {})
     },
     // 取消按钮
     cancel() {

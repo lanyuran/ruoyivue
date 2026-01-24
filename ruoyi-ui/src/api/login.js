@@ -58,3 +58,14 @@ export function getCodeImg() {
     timeout: 20000
   })
 }
+
+// 注册科室树
+export function getRegisterDeptTree() {
+  return request({
+    url: '/register/deptTree',
+    headers: {
+      isToken: false
+    },
+    method: 'get'
+  })
+}

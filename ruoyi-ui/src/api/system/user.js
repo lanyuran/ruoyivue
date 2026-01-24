@@ -70,6 +70,15 @@ export function changeUserStatus(userId, status) {
   })
 }
 
+// 医生申请审批
+export function doctorApproval(data) {
+  return request({
+    url: '/system/user/doctorApproval',
+    method: 'put',
+    data: data
+  })
+}
+
 // 查询用户个人信息
 export function getUserProfile() {
   return request({

@@ -42,6 +42,9 @@ public class PatientVisitInfo extends BaseEntity
     @Excel(name = "5、就诊医院")
     private String hospital;
 
+    /** 就诊医院所属部门ID */
+    private Long hospitalDeptId;
+
     /** 6、病历号 */
     @Excel(name = "6、病历号")
     private String medicalRecordNo;
@@ -180,6 +183,16 @@ public class PatientVisitInfo extends BaseEntity
     public String getHospital()
     {
         return hospital;
+    }
+
+    public void setHospitalDeptId(Long hospitalDeptId)
+    {
+        this.hospitalDeptId = hospitalDeptId;
+    }
+
+    public Long getHospitalDeptId()
+    {
+        return hospitalDeptId;
     }
 
     public void setMedicalRecordNo(String medicalRecordNo)
@@ -391,6 +404,7 @@ public class PatientVisitInfo extends BaseEntity
                 .append("birthDate", getBirthDate())
                 .append("visitTime", getVisitTime())
                 .append("hospital", getHospital())
+                .append("hospitalDeptId", getHospitalDeptId())
                 .append("medicalRecordNo", getMedicalRecordNo())
                 .append("parentName", getParentName())
                 .append("phone", getPhone())

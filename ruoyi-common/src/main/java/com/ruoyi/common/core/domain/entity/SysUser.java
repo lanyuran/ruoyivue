@@ -59,6 +59,12 @@ public class SysUser extends BaseEntity
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
+    /** 申请角色权限标识 */
+    private String applyRoleKey;
+
+    /** 申请状态（0待审批 1通过 2驳回） */
+    private String applyStatus;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -220,6 +226,26 @@ public class SysUser extends BaseEntity
         this.status = status;
     }
 
+    public String getApplyRoleKey()
+    {
+        return applyRoleKey;
+    }
+
+    public void setApplyRoleKey(String applyRoleKey)
+    {
+        this.applyRoleKey = applyRoleKey;
+    }
+
+    public String getApplyStatus()
+    {
+        return applyStatus;
+    }
+
+    public void setApplyStatus(String applyStatus)
+    {
+        this.applyStatus = applyStatus;
+    }
+
     public String getDelFlag()
     {
         return delFlag;
@@ -323,6 +349,8 @@ public class SysUser extends BaseEntity
             .append("avatar", getAvatar())
             .append("password", getPassword())
             .append("status", getStatus())
+            .append("applyRoleKey", getApplyRoleKey())
+            .append("applyStatus", getApplyStatus())
             .append("delFlag", getDelFlag())
             .append("loginIp", getLoginIp())
             .append("loginDate", getLoginDate())

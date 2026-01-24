@@ -42,6 +42,7 @@ CREATE TABLE `patient_visit_info` (
       `birth_date`                DATE COMMENT '3、出生日期',
       `visit_time`                DATE COMMENT '4、就诊时间',
       `hospital`                  VARCHAR(100) COMMENT '5、就诊医院',
+      `hospital_dept_id`          BIGINT(20) COMMENT '就诊医院所属部门ID',
       `medical_record_no`         VARCHAR(50) COMMENT '6、病历号',
       `parent_name`               VARCHAR(50) COMMENT '7、家长姓名',
       `phone`                     VARCHAR(20) COMMENT '8、手机号码',
@@ -65,6 +66,7 @@ CREATE TABLE `patient_visit_info` (
       PRIMARY KEY (`visit_id`),
       KEY `idx_medical_record_no` (`medical_record_no`) COMMENT '病历号索引',
       KEY `idx_visit_time` (`visit_time`) COMMENT '就诊时间索引',
+      KEY `idx_hospital_dept_id` (`hospital_dept_id`) COMMENT '就诊医院部门索引',
       KEY `idx_hospital` (`hospital`) COMMENT '医院名称索引'
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COMMENT='鼻炎患者就诊信息主表（包含图片路径等扩展字段）';
 

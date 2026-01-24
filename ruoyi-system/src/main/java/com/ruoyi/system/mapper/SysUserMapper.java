@@ -87,6 +87,14 @@ public interface SysUserMapper
     public int updateUserStatus(@Param("userId") Long userId, @Param("status") String status);
 
     /**
+     * 修改用户申请状态
+     *
+     * @param user 用户信息
+     * @return 结果
+     */
+    public int updateUserApplyStatus(SysUser user);
+
+    /**
      * 更新用户登录信息（IP和登录时间）
      * 
      * @param userId 用户ID

@@ -6,6 +6,7 @@ import com.ruoyi.common.constant.CacheConstants;
 import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.model.RegisterBody;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.exception.user.CaptchaException;
@@ -18,6 +19,7 @@ import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.system.service.ISysConfigService;
 import com.ruoyi.system.service.ISysUserService;
+import com.ruoyi.system.mapper.SysRoleMapper;
 
 /**
  * 注册校验方法
@@ -34,7 +36,16 @@ public class SysRegisterService
     private ISysConfigService configService;
 
     @Autowired
+    private SysRoleMapper roleMapper;
+
+    @Autowired
     private RedisCache redisCache;
+
+    private static final String REGISTER_ROLE_DOCTOR = "doctor";
+    private static final String ROLE_KEY_USER = "user";
+    private static final String ROLE_KEY_DOCTOR = "dept_doctor";
+    private static final String APPLY_STATUS_PENDING = "0";
+    private static final String APPLY_STATUS_APPROVED = "1";
 
     /**
      * 注册
@@ -42,6 +53,7 @@ public class SysRegisterService
     public String register(RegisterBody registerBody)
     {
         String msg = "", username = registerBody.getUsername(), password = registerBody.getPassword();
+        String registerRole = StringUtils.trimToEmpty(registerBody.getRegisterRole());
         SysUser sysUser = new SysUser();
         sysUser.setUserName(username);
 
@@ -76,10 +88,33 @@ public class SysRegisterService
         }
         else
         {
+            boolean doctorApply = REGISTER_ROLE_DOCTOR.equalsIgnoreCase(registerRole);
+            if (doctorApply && registerBody.getDeptId() == null)
+            {
+                return "请选择科室";
+            }
+            Long userRoleId = resolveRoleId(ROLE_KEY_USER);
+            if (userRoleId == null)
+            {
+                return "用户角色未配置，请联系系统管理员";
+            }
             sysUser.setNickName(username);
             sysUser.setPwdUpdateDate(DateUtils.getNowDate());
             sysUser.setPassword(SecurityUtils.encryptPassword(password));
-            boolean regFlag = userService.registerUser(sysUser);
+            sysUser.setStatus("0");
+            sysUser.setDeptId(registerBody.getDeptId());
+            sysUser.setRoleIds(new Long[] { userRoleId });
+            if (doctorApply)
+            {
+                sysUser.setApplyRoleKey(ROLE_KEY_DOCTOR);
+                sysUser.setApplyStatus(APPLY_STATUS_PENDING);
+            }
+            else
+            {
+                sysUser.setApplyRoleKey(ROLE_KEY_USER);
+                sysUser.setApplyStatus(APPLY_STATUS_APPROVED);
+            }
+            boolean regFlag = userService.insertUser(sysUser) > 0;
             if (!regFlag)
             {
                 msg = "注册失败,请联系系统管理人员";
@@ -90,6 +125,20 @@ public class SysRegisterService
             }
         }
         return msg;
+    }
+
+    private Long resolveRoleId(String roleKey)
+    {
+        if (StringUtils.isEmpty(roleKey))
+        {
+            return null;
+        }
+        SysRole role = roleMapper.checkRoleKeyUnique(roleKey);
+        if (role == null)
+        {
+            return null;
+        }
+        return role.getRoleId();
     }
 
     /**
