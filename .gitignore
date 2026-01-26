@@ -1,56 +1,60 @@
-######################################################################
-# Build Tools
+# OS
+.DS_Store
+Thumbs.db
 
-.gradle
-/build/
-!gradle/wrapper/gradle-wrapper.jar
-
-target/
-!.mvn/wrapper/maven-wrapper.jar
-
-######################################################################
 # IDE
-
-### VSCODE ###
+.idea/
 .vscode/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-
-### IntelliJ IDEA ###
-.idea
-*.iws
 *.iml
 *.ipr
-
-### JRebel ###
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.springBeans
+.apt_generated
 rebel.xml
-
-### NetBeans ###
 nbproject/private/
-build/*
+build/
 nbbuild/
 dist/
 nbdist/
 .nb-gradle/
 
-######################################################################
-# Others
+# Java / Maven / Gradle
+**/target/
+**/out/
+**/logs/
 *.log
-*.xml.versionsBackup
+*.log.*
+*.pid
 *.swp
+*.tmp
+*.bak
+*.class
 
-!*/build/*.java
-!*/build/*.html
-!*/build/*.xml
+# Maven wrapper
+!.mvn/wrapper/maven-wrapper.jar
 
-##
-# My
+# Node
+**/node_modules/
+**/dist/
+**/.cache/
+**/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.*
+
+# Runtime uploads/cache
+image-cache/
+upload/
+
+# Local misc
 my_utils/
 outis-tmp/
-image-cache/
