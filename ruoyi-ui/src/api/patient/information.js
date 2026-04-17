@@ -23,6 +23,19 @@ export function getInformation(visitId) {
   })
 }
 
+export function getMobileDetailInformation(visitId, viewToken) {
+  return request({
+    url: '/patient/information/mobile/detail/' + visitId,
+    method: 'get',
+    headers: {
+      isToken: false
+    },
+    params: {
+      viewToken
+    }
+  })
+}
+
 export function addInformation(data) {
   return request({
     url: '/patient/information',
@@ -35,6 +48,10 @@ export function mobileSubmitInformation(data) {
   return request({
     url: '/patient/information/mobile/submit',
     method: 'post',
+    headers: {
+      isToken: false,
+      repeatSubmit: false
+    },
     data
   })
 }
@@ -42,7 +59,10 @@ export function mobileSubmitInformation(data) {
 export function getMobileSubmitToken() {
   return request({
     url: '/patient/information/mobile/token',
-    method: 'get'
+    method: 'get',
+    headers: {
+      isToken: false
+    }
   })
 }
 
@@ -74,6 +94,9 @@ export function importInformationExcel(data) {
 export function listHospitalOptions() {
   return request({
     url: '/patient/information/hospitalOptions',
-    method: 'get'
+    method: 'get',
+    headers: {
+      isToken: false
+    }
   })
 }

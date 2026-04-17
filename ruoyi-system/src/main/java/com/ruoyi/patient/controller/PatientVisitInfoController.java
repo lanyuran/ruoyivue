@@ -45,6 +45,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.constant.Constants;
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.TreeSelect;
@@ -56,13 +57,18 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.core.redis.RedisCache;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.file.FileUploadUtils;
+import com.ruoyi.common.utils.file.MimeTypeUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.patient.domain.PatientVisitExportVO;
 import com.ruoyi.patient.domain.PatientVisitInfo;
 import com.ruoyi.patient.service.IPatientVisitInfoService;
+import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.system.service.ISysUserService;
 
 
 
@@ -71,8 +77,14 @@ import com.ruoyi.system.service.ISysDeptService;
 public class PatientVisitInfoController extends BaseController
 {
     private static final DateTimeFormatter IMAGE_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final DateTimeFormatter MOBILE_RECORD_NO_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final String MOBILE_SUBMIT_TOKEN_PREFIX = "patient:mobile:submit:";
     private static final int MOBILE_SUBMIT_TOKEN_EXPIRE_MINUTES = 30;
+    private static final String MOBILE_VIEW_TOKEN_PREFIX = "patient:mobile:view:";
+    private static final int MOBILE_VIEW_TOKEN_EXPIRE_HOURS = 24;
+    private static final String MOBILE_ACCOUNT_CREATE_BY = "mobile-submit";
+    private static final String AUTO_PATIENT_PASSWORD = "123456";
+    private static final String APPLY_STATUS_APPROVED = "1";
     private static final Map<String, BiConsumer<PatientVisitInfo, String>> IMAGE_HEADER_SETTERS = new HashMap<>();
     private static final Map<Integer, BiConsumer<PatientVisitInfo, String>> IMAGE_COLUMN_SETTERS = new HashMap<>();
 
@@ -95,6 +107,13 @@ public class PatientVisitInfoController extends BaseController
     @Autowired
     private RedisCache redisCache;
 
+    @Autowired
+    private ISysUserService userService;
+
+    @Autowired
+    private SysRoleMapper roleMapper;
+
+    private static final String ROLE_KEY_PATIENT = "user";
     private static final String ROLE_KEY_DEPT_DOCTOR = "dept_doctor";
 
     private static final String ROLE_KEY_DEPT_MANAGER = "dept_manager";
@@ -182,7 +201,6 @@ public class PatientVisitInfoController extends BaseController
     /**
      * 获取医院下拉选项
      */
-    @PreAuthorize("@ss.hasPermi('patient:information:list')")
     @GetMapping("/hospitalOptions")
     public AjaxResult hospitalOptions()
     {
@@ -251,7 +269,6 @@ public class PatientVisitInfoController extends BaseController
     /**
      * 生成移动端提交 token（幂等控制）
      */
-    @PreAuthorize("@ss.hasPermi('patient:information:add')")
     @GetMapping("/mobile/token")
     public AjaxResult createMobileSubmitToken()
     {
@@ -282,6 +299,21 @@ public class PatientVisitInfoController extends BaseController
     }
 
     /**
+     * 移动端公开查看刚提交的详情
+     */
+    @GetMapping("/mobile/detail/{visitId}")
+    public AjaxResult getMobileDetail(@PathVariable("visitId") Long visitId, String viewToken)
+    {
+        validateMobileViewToken(visitId, viewToken);
+        PatientVisitInfo detail = patientVisitInfoService.selectPatientVisitInfoByVisitId(visitId);
+        if (detail == null)
+        {
+            return AjaxResult.error("未找到对应的提交记录");
+        }
+        return success(detail);
+    }
+
+    /**
      * 新增鼻炎患者就诊信息主（包含文档中所有字段）
      */
     @PreAuthorize("@ss.hasPermi('patient:information:add')")
@@ -294,17 +326,67 @@ public class PatientVisitInfoController extends BaseController
     }
 
     /**
+     * 移动端图片上传
+     */
+    @PostMapping("/mobile/upload")
+    public AjaxResult mobileUpload(MultipartFile file) throws Exception
+    {
+        if (file == null || file.isEmpty())
+        {
+            return AjaxResult.error("请先选择要上传的图片");
+        }
+        try
+        {
+            String filePath = RuoYiConfig.getUploadPath() + "/patient-mobile";
+            String fileName = FileUploadUtils.upload(filePath, file, MimeTypeUtils.IMAGE_EXTENSION, true);
+            AjaxResult ajax = AjaxResult.success();
+            ajax.put("fileName", fileName);
+            ajax.put("originalFilename", file.getOriginalFilename());
+            return ajax;
+        }
+        catch (Exception e)
+        {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 移动端提交（包含幂等 token 校验）
      */
-    @PreAuthorize("@ss.hasPermi('patient:information:add')")
     @Log(title = "移动端患者就诊信息提交", businessType = BusinessType.INSERT)
     @PostMapping("/mobile/submit")
     public AjaxResult mobileSubmit(@RequestBody PatientVisitInfo patientVisitInfo)
     {
-        validateMobileSubmit(patientVisitInfo);
-        consumeMobileSubmitToken(patientVisitInfo.getRequestToken());
-        patientVisitInfo.setCreateBy(getUsername());
-        return toAjax(patientVisitInfoService.insertPatientVisitInfo(patientVisitInfo));
+        validatePublicMobileSubmit(patientVisitInfo);
+        consumePublicMobileSubmitToken(patientVisitInfo.getRequestToken());
+        patientVisitInfo.setPhone(StringUtils.trim(patientVisitInfo.getPhone()));
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMedicalRecordNo())))
+        {
+            patientVisitInfo.setMedicalRecordNo(generateMedicalRecordNo(patientVisitInfo.getPhone()));
+        }
+        if (patientVisitInfo.getHospitalDeptId() != null && StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getHospital())))
+        {
+            SysDept hospitalDept = deptService.selectDeptById(patientVisitInfo.getHospitalDeptId());
+            if (hospitalDept != null)
+            {
+                patientVisitInfo.setHospital(hospitalDept.getDeptName());
+            }
+        }
+        PatientAccountResult accountResult = ensurePatientAccount(patientVisitInfo);
+        patientVisitInfo.setCreateBy(accountResult.getUsername());
+        int rows = patientVisitInfoService.insertPatientVisitInfo(patientVisitInfo);
+        if (rows <= 0)
+        {
+            return AjaxResult.error("提交失败，请稍后重试");
+        }
+        AjaxResult result = AjaxResult.success("提交成功");
+        result.put("username", accountResult.getUsername());
+        result.put("password", accountResult.getPassword());
+        result.put("accountCreated", accountResult.isCreated());
+        result.put("medicalRecordNo", patientVisitInfo.getMedicalRecordNo());
+        result.put("visitId", patientVisitInfo.getVisitId());
+        result.put("viewToken", createMobileViewToken(patientVisitInfo.getVisitId()));
+        return result;
     }
 
     /**
@@ -377,11 +459,16 @@ public class PatientVisitInfoController extends BaseController
 
     private boolean hasRole(SysUser user, String roleKey)
     {
-        if (user == null || StringUtils.isEmpty(roleKey) || user.getRoles() == null)
+        return hasRole(user == null ? null : user.getRoles(), roleKey);
+    }
+
+    private boolean hasRole(List<SysRole> roles, String roleKey)
+    {
+        if (roles == null || StringUtils.isEmpty(roleKey))
         {
             return false;
         }
-        for (SysRole role : user.getRoles())
+        for (SysRole role : roles)
         {
             if (role == null || StringUtils.isEmpty(role.getRoleKey()))
             {
@@ -761,6 +848,177 @@ public class PatientVisitInfoController extends BaseController
         redisCache.deleteObject(key);
     }
 
+    private void validatePublicMobileSubmit(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            throw new ServiceException("提交数据不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getRequestToken())))
+        {
+            throw new ServiceException("提交令牌不能为空，请刷新页面后重试");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getName())))
+        {
+            throw new ServiceException("患者姓名不能为空");
+        }
+        if (patientVisitInfo.getBirthDate() == null)
+        {
+            throw new ServiceException("出生日期不能为空");
+        }
+        if (patientVisitInfo.getVisitTime() == null)
+        {
+            throw new ServiceException("就诊日期不能为空");
+        }
+        if (patientVisitInfo.getHospitalDeptId() == null)
+        {
+            throw new ServiceException("请选择就诊医院");
+        }
+        String phone = StringUtils.trim(patientVisitInfo.getPhone());
+        if (StringUtils.isEmpty(phone))
+        {
+            throw new ServiceException("联系电话不能为空");
+        }
+        if (!phone.matches("^1[3-9]\\d{9}$"))
+        {
+            throw new ServiceException("请输入正确的手机号");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getChiefComplaint())))
+        {
+            throw new ServiceException("主诉不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMainSymptom())))
+        {
+            throw new ServiceException("主症不能为空");
+        }
+    }
+
+    private void consumePublicMobileSubmitToken(String requestToken)
+    {
+        String token = StringUtils.trim(requestToken);
+        String key = MOBILE_SUBMIT_TOKEN_PREFIX + token;
+        Boolean exists = redisCache.hasKey(key);
+        if (Boolean.FALSE.equals(exists))
+        {
+            throw new ServiceException("提交令牌无效或已过期，请刷新页面后重试");
+        }
+        redisCache.deleteObject(key);
+    }
+
+    private String createMobileViewToken(Long visitId)
+    {
+        if (visitId == null)
+        {
+            throw new ServiceException("提交记录编号不能为空");
+        }
+        String viewToken = UUID.randomUUID().toString().replace("-", "");
+        redisCache.setCacheObject(MOBILE_VIEW_TOKEN_PREFIX + viewToken, String.valueOf(visitId), MOBILE_VIEW_TOKEN_EXPIRE_HOURS, TimeUnit.HOURS);
+        return viewToken;
+    }
+
+    private void validateMobileViewToken(Long visitId, String viewToken)
+    {
+        if (visitId == null || StringUtils.isEmpty(StringUtils.trim(viewToken)))
+        {
+            throw new ServiceException("查看令牌无效，请重新提交后查看");
+        }
+        String cachedVisitId = redisCache.getCacheObject(MOBILE_VIEW_TOKEN_PREFIX + StringUtils.trim(viewToken));
+        if (StringUtils.isEmpty(cachedVisitId) || !String.valueOf(visitId).equals(cachedVisitId))
+        {
+            throw new ServiceException("查看链接无效或已过期，请重新提交后查看");
+        }
+    }
+
+    private String generateMedicalRecordNo(String phone)
+    {
+        String suffix = StringUtils.isEmpty(phone) || phone.length() < 4 ? "0000" : phone.substring(phone.length() - 4);
+        return "P" + MOBILE_RECORD_NO_FORMATTER.format(LocalDateTime.now()) + suffix;
+    }
+
+    private PatientAccountResult ensurePatientAccount(PatientVisitInfo patientVisitInfo)
+    {
+        String phone = StringUtils.trim(patientVisitInfo.getPhone());
+        Long patientRoleId = resolveRoleId(ROLE_KEY_PATIENT);
+        if (patientRoleId == null)
+        {
+            throw new ServiceException("患者角色未配置，请联系管理员");
+        }
+        SysUser existingUser = userService.selectUserByUserName(phone);
+        if (existingUser == null)
+        {
+            SysUser newUser = new SysUser();
+            newUser.setUserName(phone);
+            newUser.setNickName(StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getName())) ? phone : StringUtils.trim(patientVisitInfo.getName()));
+            newUser.setPhonenumber(phone);
+            newUser.setPassword(SecurityUtils.encryptPassword(AUTO_PATIENT_PASSWORD));
+            newUser.setStatus(UserConstants.NORMAL);
+            newUser.setApplyRoleKey(ROLE_KEY_PATIENT);
+            newUser.setApplyStatus(APPLY_STATUS_APPROVED);
+            newUser.setPwdUpdateDate(DateUtils.getNowDate());
+            newUser.setRoleIds(new Long[] { patientRoleId });
+            newUser.setCreateBy(MOBILE_ACCOUNT_CREATE_BY);
+            newUser.setRemark("患者填写后自动创建账号");
+            if (userService.insertUser(newUser) <= 0)
+            {
+                throw new ServiceException("患者账号创建失败，请联系管理员");
+            }
+            return new PatientAccountResult(phone, AUTO_PATIENT_PASSWORD, true);
+        }
+
+        List<SysRole> roles = roleMapper.selectRolesByUserName(phone);
+        if (hasNonPatientRole(roles))
+        {
+            throw new ServiceException("该手机号已被医生、主管或管理员账号使用，请更换手机号或联系管理员");
+        }
+        if (!hasRole(roles, ROLE_KEY_PATIENT))
+        {
+            userService.insertUserAuth(existingUser.getUserId(), new Long[] { patientRoleId });
+        }
+        SysUser updateUser = new SysUser();
+        updateUser.setUserId(existingUser.getUserId());
+        updateUser.setNickName(StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getName())) ? existingUser.getNickName() : StringUtils.trim(patientVisitInfo.getName()));
+        updateUser.setPhonenumber(phone);
+        updateUser.setStatus(UserConstants.NORMAL);
+        updateUser.setApplyRoleKey(ROLE_KEY_PATIENT);
+        updateUser.setApplyStatus(APPLY_STATUS_APPROVED);
+        updateUser.setUpdateBy(MOBILE_ACCOUNT_CREATE_BY);
+        updateUser.setRemark("患者填写后自动更新账号");
+        userService.updateUserProfile(updateUser);
+        userService.resetUserPwd(existingUser.getUserId(), SecurityUtils.encryptPassword(AUTO_PATIENT_PASSWORD));
+        return new PatientAccountResult(phone, AUTO_PATIENT_PASSWORD, false);
+    }
+
+    private boolean hasNonPatientRole(List<SysRole> roles)
+    {
+        if (roles == null)
+        {
+            return false;
+        }
+        for (SysRole role : roles)
+        {
+            if (role == null || StringUtils.isEmpty(role.getRoleKey()))
+            {
+                continue;
+            }
+            String[] keys = role.getRoleKey().split(",");
+            for (String key : keys)
+            {
+                String trimmedKey = StringUtils.trim(key);
+                if (StringUtils.isNotEmpty(trimmedKey) && !ROLE_KEY_PATIENT.equals(trimmedKey))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Long resolveRoleId(String roleKey)
+    {
+        SysRole role = roleMapper.checkRoleKeyUnique(roleKey);
+        return role == null ? null : role.getRoleId();
+    }
+
     private static final class ExcelImportContext
     {
         private final List<ExcelImageInfo> imageInfos;
@@ -816,6 +1074,35 @@ public class PatientVisitInfoController extends BaseController
         public String getPath()
         {
             return path;
+        }
+    }
+
+    private static final class PatientAccountResult
+    {
+        private final String username;
+        private final String password;
+        private final boolean created;
+
+        private PatientAccountResult(String username, String password, boolean created)
+        {
+            this.username = username;
+            this.password = password;
+            this.created = created;
+        }
+
+        public String getUsername()
+        {
+            return username;
+        }
+
+        public String getPassword()
+        {
+            return password;
+        }
+
+        public boolean isCreated()
+        {
+            return created;
         }
     }
 }

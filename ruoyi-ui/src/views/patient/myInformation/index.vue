@@ -1,58 +1,58 @@
 <template>
   <div class="app-container">
     <el-form ref="queryForm" :model="queryParams" :inline="true" size="small" v-show="showSearch" label-width="90px">
-      <el-form-item label="Name" prop="name">
-        <el-input v-model="queryParams.name" placeholder="Patient name" clearable @keyup.enter.native="handleQuery" />
+      <el-form-item label="患者姓名" prop="name">
+        <el-input v-model="queryParams.name" placeholder="请输入患者姓名" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
-      <el-form-item label="Hospital" prop="hospital">
-        <el-input v-model="queryParams.hospital" placeholder="Hospital" clearable @keyup.enter.native="handleQuery" />
+      <el-form-item label="就诊医院" prop="hospital">
+        <el-input v-model="queryParams.hospital" placeholder="请输入就诊医院" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
-      <el-form-item label="Record No" prop="medicalRecordNo">
-        <el-input v-model="queryParams.medicalRecordNo" placeholder="Medical record no" clearable @keyup.enter.native="handleQuery" />
+      <el-form-item label="病历号" prop="medicalRecordNo">
+        <el-input v-model="queryParams.medicalRecordNo" placeholder="请输入病历号" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
-      <el-form-item label="Phone" prop="phone">
-        <el-input v-model="queryParams.phone" placeholder="Phone" clearable @keyup.enter.native="handleQuery" />
+      <el-form-item label="联系电话" prop="phone">
+        <el-input v-model="queryParams.phone" placeholder="请输入联系电话" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">Search</el-button>
-        <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">Reset</el-button>
+        <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
+        <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
       </el-form-item>
     </el-form>
 
     <el-row :gutter="10" class="mb8">
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="el-icon-upload" size="mini" @click="handleExcelImport" v-hasPermi="['patient:information:add']">Import</el-button>
+        <el-button type="primary" plain icon="el-icon-upload" size="mini" @click="handleExcelImport" v-hasPermi="['patient:information:add']">导入</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['patient:information:add']">Add</el-button>
+        <el-button type="primary" plain icon="el-icon-plus" size="mini" @click="handleAdd" v-hasPermi="['patient:information:add']">新增</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['patient:information:edit']">Edit</el-button>
+        <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['patient:information:edit']">修改</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['patient:information:remove']">Delete</el-button>
+        <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['patient:information:remove']">删除</el-button>
       </el-col>
       <el-col :span="1.5">
-        <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['patient:information:export']">Export</el-button>
+        <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['patient:information:export']">导出</el-button>
       </el-col>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
     </el-row>
 
     <el-table v-loading="loading" :data="informationList" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55" align="center" />
-      <el-table-column label="ID" prop="visitId" width="80" align="center" />
-      <el-table-column label="Name" prop="name" min-width="120" />
-      <el-table-column label="Record No" prop="medicalRecordNo" min-width="140" />
-      <el-table-column label="Hospital" prop="hospital" min-width="160" show-overflow-tooltip />
-      <el-table-column label="Phone" prop="phone" width="130" />
-      <el-table-column label="Visit Date" prop="visitTime" width="120">
+      <el-table-column label="编号" prop="visitId" width="80" align="center" />
+      <el-table-column label="患者姓名" prop="name" min-width="120" />
+      <el-table-column label="病历号" prop="medicalRecordNo" min-width="140" />
+      <el-table-column label="就诊医院" prop="hospital" min-width="160" show-overflow-tooltip />
+      <el-table-column label="联系电话" prop="phone" width="130" />
+      <el-table-column label="就诊日期" prop="visitTime" width="120">
         <template slot-scope="scope">{{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}</template>
       </el-table-column>
-      <el-table-column label="Action" width="220" align="center" class-name="small-padding fixed-width">
+      <el-table-column label="操作" width="220" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
-          <el-button size="mini" type="text" @click="handleDetail(scope.row)">Detail</el-button>
-          <el-button size="mini" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['patient:information:edit']">Edit</el-button>
-          <el-button size="mini" type="text" @click="handleDelete(scope.row)" v-hasPermi="['patient:information:remove']">Delete</el-button>
+          <el-button size="mini" type="text" @click="handleDetail(scope.row)">详情</el-button>
+          <el-button size="mini" type="text" @click="handleUpdate(scope.row)" v-hasPermi="['patient:information:edit']">修改</el-button>
+          <el-button size="mini" type="text" @click="handleDelete(scope.row)" v-hasPermi="['patient:information:remove']">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -62,46 +62,46 @@
     <el-dialog :title="title" :visible.sync="open" width="760px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="16">
-          <el-col :span="12"><el-form-item label="Name" prop="name"><el-input v-model="form.name" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="患者姓名" prop="name"><el-input v-model="form.name" /></el-form-item></el-col>
           <el-col :span="12">
-            <el-form-item label="Gender"><el-select v-model="form.gender"><el-option label="Male" value="男" /><el-option label="Female" value="女" /></el-select></el-form-item>
+            <el-form-item label="性别"><el-select v-model="form.gender"><el-option label="男" value="男" /><el-option label="女" value="女" /></el-select></el-form-item>
           </el-col>
-          <el-col :span="12"><el-form-item label="Birth Date" prop="birthDate"><el-date-picker v-model="form.birthDate" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="Visit Date" prop="visitTime"><el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="出生日期" prop="birthDate"><el-date-picker v-model="form.birthDate" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="就诊日期" prop="visitTime"><el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
           <el-col :span="12">
-            <el-form-item label="Hospital" prop="hospitalDeptId">
-              <el-select v-model="form.hospitalDeptId" clearable filterable placeholder="Select hospital" style="width: 100%" @change="handleHospitalChange">
+            <el-form-item label="就诊医院" prop="hospitalDeptId">
+              <el-select v-model="form.hospitalDeptId" clearable filterable placeholder="请选择就诊医院" style="width: 100%" @change="handleHospitalChange">
                 <el-option v-for="item in hospitalOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
               </el-select>
             </el-form-item>
           </el-col>
-          <el-col :span="12"><el-form-item label="Other Hospital"><el-input v-model="hospitalOther" @input="handleOtherHospitalInput" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="Record No" prop="medicalRecordNo"><el-input v-model="form.medicalRecordNo" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="Phone" prop="phone"><el-input v-model="form.phone" maxlength="11" /></el-form-item></el-col>
-          <el-col :span="12"><el-form-item label="Parent"><el-input v-model="form.parentName" /></el-form-item></el-col>
-          <el-col :span="24"><el-form-item label="Chief Complaint" prop="chiefComplaint"><el-input v-model="form.chiefComplaint" type="textarea" :rows="2" /></el-form-item></el-col>
-          <el-col :span="24"><el-form-item label="Main Symptom" prop="mainSymptom"><el-input v-model="form.mainSymptom" type="textarea" :rows="2" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="其他医院"><el-input v-model="hospitalOther" @input="handleOtherHospitalInput" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="病历号" prop="medicalRecordNo"><el-input v-model="form.medicalRecordNo" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="联系电话" prop="phone"><el-input v-model="form.phone" maxlength="11" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="监护人姓名"><el-input v-model="form.parentName" /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="主诉" prop="chiefComplaint"><el-input v-model="form.chiefComplaint" type="textarea" :rows="2" /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="主症" prop="mainSymptom"><el-input v-model="form.mainSymptom" type="textarea" :rows="2" /></el-form-item></el-col>
         </el-row>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitForm">OK</el-button>
-        <el-button @click="cancel">Cancel</el-button>
+        <el-button type="primary" @click="submitForm">确定</el-button>
+        <el-button @click="cancel">取消</el-button>
       </div>
     </el-dialog>
 
-    <el-dialog title="Import Failures" :visible.sync="importResultOpen" width="720px" append-to-body>
+    <el-dialog title="导入失败明细" :visible.sync="importResultOpen" width="720px" append-to-body>
       <div class="import-summary">
-        <span>Success {{ importSummary.successCount }}</span>
-        <span class="danger">Fail {{ importSummary.failureCount }}</span>
+        <span>成功 {{ importSummary.successCount }}</span>
+        <span class="danger">失败 {{ importSummary.failureCount }}</span>
       </div>
       <el-table :data="importSummary.failureDetails" border max-height="360">
-        <el-table-column label="Row" prop="rowNum" width="90" align="center" />
-        <el-table-column label="Record No" prop="medicalRecordNo" width="160" />
-        <el-table-column label="Reason" prop="reason" min-width="320" show-overflow-tooltip />
+        <el-table-column label="行号" prop="rowNum" width="90" align="center" />
+        <el-table-column label="病历号" prop="medicalRecordNo" width="160" />
+        <el-table-column label="失败原因" prop="reason" min-width="320" show-overflow-tooltip />
       </el-table>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="downloadImportFailures" :disabled="!importSummary.failureDetails.length">Download CSV</el-button>
-        <el-button @click="importResultOpen = false">Close</el-button>
+        <el-button type="primary" @click="downloadImportFailures" :disabled="!importSummary.failureDetails.length">下载 CSV</el-button>
+        <el-button @click="importResultOpen = false">关闭</el-button>
       </div>
     </el-dialog>
   </div>
@@ -149,16 +149,16 @@ export default {
       },
       form: {},
       rules: {
-        name: [{ required: true, message: 'Please input name', trigger: 'blur' }],
-        birthDate: [{ required: true, message: 'Please select birth date', trigger: 'change' }],
-        visitTime: [{ required: true, message: 'Please select visit date', trigger: 'change' }],
-        medicalRecordNo: [{ required: true, message: 'Please input medical record no', trigger: 'blur' }],
+        name: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
+        birthDate: [{ required: true, message: '请选择出生日期', trigger: 'change' }],
+        visitTime: [{ required: true, message: '请选择就诊日期', trigger: 'change' }],
+        medicalRecordNo: [{ required: true, message: '请输入病历号', trigger: 'blur' }],
         phone: [
-          { required: true, message: 'Please input phone', trigger: 'blur' },
-          { pattern: /^1[3-9]\d{9}$/, message: 'Invalid phone format', trigger: 'blur' }
+          { required: true, message: '请输入联系电话', trigger: 'blur' },
+          { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
         ],
-        chiefComplaint: [{ required: true, message: 'Please input chief complaint', trigger: 'blur' }],
-        mainSymptom: [{ required: true, message: 'Please input main symptom', trigger: 'blur' }]
+        chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
+        mainSymptom: [{ required: true, message: '请输入主症', trigger: 'blur' }]
       }
     }
   },
@@ -242,7 +242,7 @@ export default {
     handleAdd() {
       this.reset()
       this.open = true
-      this.title = 'Add Patient'
+      this.title = '新增病例'
     },
     handleUpdate(row) {
       const visitId = row.visitId || this.ids[0]
@@ -253,13 +253,13 @@ export default {
         const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
         this.hospitalOther = selected ? '' : (this.form.hospital || '')
         this.open = true
-        this.title = 'Edit Patient'
+        this.title = '修改病例'
       })
     },
     handleDetail(row) {
       const visitId = row.visitId || this.ids[0]
       if (!visitId) {
-        this.$modal.msgWarning('Please select one row')
+        this.$modal.msgWarning('请选择一条数据')
         return
       }
       this.$router.push(`/patient-detail/${visitId}`)
@@ -270,7 +270,7 @@ export default {
         if (!valid) return
         const req = this.form.visitId ? updateInformation(this.form) : addInformation(this.form)
         req.then(() => {
-          this.$modal.msgSuccess(this.form.visitId ? 'Updated' : 'Created')
+          this.$modal.msgSuccess(this.form.visitId ? '修改成功' : '新增成功')
           this.open = false
           this.getList()
         })
@@ -283,10 +283,10 @@ export default {
     handleDelete(row) {
       const visitIds = row.visitId || this.ids
       if (!visitIds || visitIds.length === 0) return
-      this.$modal.confirm('Confirm delete selected data?').then(() => {
+      this.$modal.confirm('是否确认删除选中的数据项？').then(() => {
         return delInformation(visitIds)
       }).then(() => {
-        this.$modal.msgSuccess('Deleted')
+        this.$modal.msgSuccess('删除成功')
         this.getList()
       }).catch(() => {})
     },
@@ -301,18 +301,18 @@ export default {
         const file = input.files && input.files[0]
         if (!file) return
         if (!file.name.toLowerCase().endsWith('.xlsx')) {
-          this.$modal.msgError('Please select .xlsx file')
+          this.$modal.msgError('请选择 .xlsx 文件')
           return
         }
         const formData = new FormData()
         formData.append('file', file)
-        this.$modal.loading('Importing...')
+        this.$modal.loading('正在导入...')
         importInformationExcel(formData).then(res => {
           const successCount = Number(res.successCount || 0)
           const failureCount = Number(res.failureCount || 0)
           const failureDetails = Array.isArray(res.failureDetails) ? res.failureDetails : []
           this.importSummary = { successCount, failureCount, failureDetails }
-          this.$modal.msgSuccess(res.msg || 'Import finished')
+          this.$modal.msgSuccess(res.msg || '导入完成')
           if (failureDetails.length > 0) {
             this.importResultOpen = true
           }

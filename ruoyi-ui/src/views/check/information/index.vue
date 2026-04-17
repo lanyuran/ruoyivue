@@ -667,17 +667,7 @@ export default {
         this.$modal.alertWarning("请至少选择一条记录")
         return
       }
-      this.reset()
-      getInformation(visitId).then(response => {
-        this.form = response.data
-        this.title = "患者就诊详细信息"
-        this.open = true
-        this.initImageLists()
-        this.loadHospitalOptions().finally(() => {
-          this.syncHospitalSelection()
-        })
-        this.setFormReadonly(true)
-      })
+      this.$router.push(`/patient-detail/${visitId}`)
     },
     // 取消按钮
     cancel() {

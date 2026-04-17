@@ -5,45 +5,47 @@
         <el-card class="guide-card">
           <div class="guide-title">使用说明</div>
           <ol class="guide-list">
-            <li>注册账号：默认用户级，选择医生级会进入科室主管审批流程。</li>
-            <li>数据上传：录入/导入自己的病例数据，支持图片上传与修改。</li>
-            <li>数据查询：医生及以上角色可在权限范围内检索与查看数据。</li>
-            <li>系统管理：主管及以上角色可进行用户与医院管理。</li>
+            <li>患者无需注册，直接打开患者填写链接提交信息。</li>
+            <li>患者提交完成后，系统会自动以手机号生成账号，初始密码为 `123456`。</li>
+            <li>医生需要先注册账号，审核通过后再登录系统。</li>
+            <li>主管和管理员可在权限范围内查看数据与进行管理。</li>
           </ol>
         </el-card>
+
         <el-card class="guide-card">
-          <div class="guide-title">操作流程</div>
+          <div class="guide-title">推荐流程</div>
           <div class="guide-steps">
             <div class="guide-step">
               <div class="step-index">1</div>
               <div class="step-body">
-                <div class="step-title">注册/登录</div>
-                <div class="step-desc">选择身份并完成注册，登录后进入系统。</div>
+                <div class="step-title">患者填写</div>
+                <div class="step-desc">通过问卷式页面直接填写病例信息并上传图片资料。</div>
               </div>
             </div>
             <div class="guide-step">
               <div class="step-index">2</div>
               <div class="step-body">
-                <div class="step-title">数据上传</div>
-                <div class="step-desc">在数据上传页录入或导入病例信息，上传图片资料。</div>
+                <div class="step-title">系统建号</div>
+                <div class="step-desc">提交成功后自动生成患者账号，便于后续登录查看自己的提交记录。</div>
               </div>
             </div>
             <div class="guide-step">
               <div class="step-index">3</div>
               <div class="step-body">
-                <div class="step-title">数据查询</div>
-                <div class="step-desc">医生及以上角色可按姓名/病历号等条件查询。</div>
+                <div class="step-title">医生管理</div>
+                <div class="step-desc">医生或主管登录后在权限范围内查看、审核和管理数据。</div>
               </div>
             </div>
           </div>
         </el-card>
       </el-col>
+
       <el-col :xs="24" :md="10">
         <el-card class="guide-card">
-          <div class="guide-title">权限等级</div>
+          <div class="guide-title">当前角色</div>
           <el-table :data="roleList" size="small" border>
-            <el-table-column label="等级" prop="role" width="110" />
-            <el-table-column label="可访问页面" prop="access" />
+            <el-table-column label="角色" prop="role" width="110" />
+            <el-table-column label="主要权限" prop="access" />
           </el-table>
         </el-card>
       </el-col>
@@ -53,15 +55,14 @@
 
 <script>
 export default {
-  name: "Index",
+  name: 'Index',
   data() {
     return {
       roleList: [
-        { role: "用户级", access: "首页、数据上传" },
-        { role: "科室医生级", access: "首页、数据上传、数据查询" },
-        { role: "科室主管级", access: "首页、数据上传、数据查询、用户管理" },
-        { role: "院区主管级", access: "首页、数据上传、数据查询、用户管理、医院管理" },
-        { role: "管理员级", access: "全部功能与权限控制" }
+        { role: '患者', access: '直接填写、查看本人提交记录' },
+        { role: '医生', access: '管理本人或本院授权范围内数据' },
+        { role: '主管', access: '查看本院数据并进行用户/医院相关管理' },
+        { role: '管理员', access: '拥有全量配置与系统管理权限' }
       ]
     }
   }
@@ -72,29 +73,35 @@ export default {
 .home-guide {
   color: #303133;
 }
+
 .guide-card {
   margin-bottom: 20px;
 }
+
 .guide-title {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 12px;
 }
+
 .guide-list {
   padding-left: 18px;
   margin: 0;
-  line-height: 1.8;
+  line-height: 1.9;
 }
+
 .guide-steps {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
+
 .guide-step {
   display: flex;
   align-items: flex-start;
   gap: 12px;
 }
+
 .step-index {
   width: 26px;
   height: 26px;
@@ -106,10 +113,12 @@ export default {
   justify-content: center;
   font-weight: 600;
 }
+
 .step-title {
   font-weight: 600;
   margin-bottom: 4px;
 }
+
 .step-desc {
   color: #606266;
   font-size: 13px;

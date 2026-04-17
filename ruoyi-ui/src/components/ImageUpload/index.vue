@@ -100,10 +100,6 @@ export default {
       dialogVisible: false,
       hideUpload: false,
       baseUrl: process.env.VUE_APP_BASE_API,
-      uploadImgUrl: process.env.VUE_APP_BASE_API + this.action, // 上传的图片服务器地址
-      headers: {
-        Authorization: "Bearer " + getToken(),
-      },
       fileList: []
     }
   },
@@ -148,6 +144,13 @@ export default {
     }
   },
   computed: {
+    uploadImgUrl() {
+      return process.env.VUE_APP_BASE_API + this.action
+    },
+    headers() {
+      const token = getToken()
+      return token ? { Authorization: "Bearer " + token } : {}
+    },
     // 是否显示提示
     showTip() {
       return this.isShowTip && (this.fileType || this.fileSize)

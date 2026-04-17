@@ -102,17 +102,17 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/patient-mobile',
-    component: Layout,
+    path: '/patient-mobile/detail/:visitId(\\d+)',
+    component: () => import('@/views/patient/detail/index'),
     hidden: true,
-    children: [
-      {
-        path: 'collect',
-        component: () => import('@/views/patient/mobile/index'),
-        name: 'PatientMobileCollect',
-        meta: { title: '移动端采集' }
-      }
-    ]
+    meta: { title: '提交详情' }
+  },
+  {
+    path: '/patient-mobile/collect',
+    component: () => import('@/views/patient/mobile/index'),
+    hidden: true,
+    name: 'PatientMobileCollect',
+    meta: { title: '患者填写' }
   },
   {
     path: '/survey/fill/:surveyId(\\d+)',

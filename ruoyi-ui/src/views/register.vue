@@ -1,8 +1,8 @@
 <template>
   <div class="register">
     <el-form ref="registerForm" :model="registerForm" :rules="registerRules" class="register-form">
-      <h3 class="title">临床研究数据采集系统</h3>
-      <p class="subtitle">手机号即登录账号</p>
+      <h3 class="title">医生注册</h3>
+      <p class="subtitle">患者无需注册，可直接填写问卷；医生注册后需要审核通过才能登录。</p>
 
       <el-form-item prop="username">
         <el-input
@@ -15,21 +15,14 @@
         </el-input>
       </el-form-item>
 
-      <el-form-item prop="registerRole">
-        <el-radio-group v-model="registerForm.registerRole" class="register-role-group">
-          <el-radio label="user">患者账号</el-radio>
-          <el-radio label="doctor">医生账号</el-radio>
-        </el-radio-group>
-      </el-form-item>
-
-      <el-form-item v-if="registerForm.registerRole === 'doctor'" prop="deptId">
+      <el-form-item prop="deptId">
         <treeselect
           v-model="registerForm.deptId"
           :options="deptOptions"
           :show-count="true"
-          placeholder="请选择所属科室"
+          placeholder="请选择所属医院或科室"
         />
-        <div class="register-tip">医生账号提交后需要科室主管审批。</div>
+        <div class="register-tip">提交后会进入审核流程，审核通过后即可登录系统。</div>
       </el-form-item>
 
       <el-form-item prop="password">
@@ -73,11 +66,12 @@
 
       <el-form-item style="width: 100%">
         <el-button :loading="loading" size="medium" type="primary" style="width: 100%" @click.native.prevent="handleRegister">
-          <span v-if="!loading">注 册</span>
-          <span v-else>注册中...</span>
+          <span v-if="!loading">提交注册</span>
+          <span v-else>提交中...</span>
         </el-button>
-        <div style="text-align: right; margin-top: 10px;">
+        <div class="register-links">
           <router-link class="link-type" :to="'/login'">已有账号，去登录</router-link>
+          <router-link class="link-type" :to="'/patient-mobile/collect'">患者直接填写</router-link>
         </div>
       </el-form-item>
     </el-form>
@@ -101,19 +95,12 @@ export default {
         callback()
       }
     }
-    const validateDept = (rule, value, callback) => {
-      if (this.registerForm.registerRole === 'doctor' && !value) {
-        callback(new Error('请选择所属科室'))
-      } else {
-        callback()
-      }
-    }
     return {
       codeUrl: '',
       deptOptions: [],
       registerForm: {
         username: '',
-        registerRole: 'user',
+        registerRole: 'doctor',
         deptId: undefined,
         password: '',
         confirmPassword: '',
@@ -125,8 +112,7 @@ export default {
           { required: true, trigger: 'blur', message: '请输入手机号' },
           { pattern: mobileReg, trigger: 'blur', message: '请输入正确的手机号' }
         ],
-        registerRole: [{ required: true, trigger: 'change', message: '请选择注册身份' }],
-        deptId: [{ validator: validateDept, trigger: 'change' }],
+        deptId: [{ required: true, trigger: 'change', message: '请选择所属医院或科室' }],
         password: [
           { required: true, trigger: 'blur', message: '请输入密码' },
           { min: 5, max: 20, message: '密码长度必须在 5 到 20 个字符之间', trigger: 'blur' },
@@ -142,17 +128,9 @@ export default {
       captchaEnabled: true
     }
   },
-  watch: {
-    'registerForm.registerRole'(value) {
-      if (value === 'doctor' && this.deptOptions.length === 0) {
-        this.getDeptTree()
-      } else if (value !== 'doctor') {
-        this.registerForm.deptId = undefined
-      }
-    }
-  },
   created() {
     this.getCode()
+    this.getDeptTree()
   },
   methods: {
     getCode() {
@@ -173,12 +151,9 @@ export default {
       this.$refs.registerForm.validate(valid => {
         if (!valid) return
         this.loading = true
-        if (this.registerForm.registerRole !== 'doctor') {
-          this.registerForm.deptId = undefined
-        }
         register(this.registerForm).then(() => {
           const username = this.registerForm.username
-          this.$alert("<font color='green'>账号 " + username + " 注册成功</font>", '系统提示', {
+          this.$alert(`<font color='green'>账号 ${username} 已提交注册，请等待审核通过。</font>`, '系统提示', {
             dangerouslyUseHTMLString: true,
             type: 'success'
           }).then(() => {
@@ -204,7 +179,7 @@ export default {
   padding: 24px;
 }
 .register-form {
-  width: 420px;
+  width: 440px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
@@ -220,10 +195,7 @@ export default {
   color: #6b7280;
   text-align: center;
   font-size: 13px;
-}
-.register-role-group {
-  display: flex;
-  gap: 24px;
+  line-height: 1.6;
 }
 .register-tip {
   margin-top: 6px;
@@ -232,6 +204,11 @@ export default {
 }
 .input-icon {
   color: #409eff;
+}
+.register-links {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
 }
 .link-type {
   color: #409eff;
