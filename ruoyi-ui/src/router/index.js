@@ -89,6 +89,42 @@ export const constantRoutes = [
     ]
   },
   {
+    path: '/patient-detail',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: ':visitId(\\d+)',
+        component: () => import('@/views/patient/detail/index'),
+        name: 'PatientDetail',
+        meta: { title: '病例详情', activeMenu: '/patient' }
+      }
+    ]
+  },
+  {
+    path: '/patient-mobile',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: 'collect',
+        component: () => import('@/views/patient/mobile/index'),
+        name: 'PatientMobileCollect',
+        meta: { title: '移动端采集' }
+      }
+    ]
+  },
+  {
+    path: '/survey/fill/:surveyId(\\d+)',
+    component: () => import('@/views/survey/fill/index'),
+    hidden: true
+  },
+  {
+    path: '/survey/fill-success',
+    component: () => import('@/views/survey/fill/success'),
+    hidden: true
+  },
+  {
     path: '/survey',
     component: Layout,
     redirect: '/survey/list',
@@ -112,6 +148,13 @@ export const constantRoutes = [
         component: () => import('@/views/survey/form/index'),
         name: 'SurveyFormEdit',
         meta: { title: '问卷编辑', icon: 'edit' },
+        hidden: true
+      },
+      {
+        path: 'answer/:surveyId',
+        component: () => import('@/views/survey/answer/index'),
+        name: 'SurveyAnswer',
+        meta: { title: '问卷答卷', icon: 'list' },
         hidden: true
       }
     ]

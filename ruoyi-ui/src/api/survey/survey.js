@@ -1,6 +1,5 @@
 import request from '@/utils/request'
 
-// 查询问卷列表
 export function listSurvey(query) {
   return request({
     url: '/survey/survey/list',
@@ -9,7 +8,6 @@ export function listSurvey(query) {
   })
 }
 
-// 查询问卷详细
 export function getSurvey(surveyId) {
   return request({
     url: '/survey/survey/' + surveyId,
@@ -17,25 +15,22 @@ export function getSurvey(surveyId) {
   })
 }
 
-// 新增问卷
 export function addSurvey(data) {
   return request({
     url: '/survey/survey',
     method: 'post',
-    data: data
+    data
   })
 }
 
-// 修改问卷
 export function updateSurvey(data) {
   return request({
     url: '/survey/survey',
     method: 'put',
-    data: data
+    data
   })
 }
 
-// 删除问卷
 export function delSurvey(surveyId) {
   return request({
     url: '/survey/survey/' + surveyId,
@@ -43,10 +38,40 @@ export function delSurvey(surveyId) {
   })
 }
 
-// 导出问卷
 export function exportSurvey(query) {
   return request({
     url: '/survey/survey/export',
+    method: 'post',
+    params: query
+  })
+}
+
+export function getSurveyFill(surveyId) {
+  return request({
+    url: '/survey/fill/' + surveyId,
+    method: 'get'
+  })
+}
+
+export function submitSurveyFill(surveyId, data) {
+  return request({
+    url: '/survey/fill/' + surveyId + '/submit',
+    method: 'post',
+    data
+  })
+}
+
+export function listSurveyAnswers(surveyId, query) {
+  return request({
+    url: '/survey/survey/' + surveyId + '/answers',
+    method: 'get',
+    params: query
+  })
+}
+
+export function exportSurveyAnswers(surveyId, query) {
+  return request({
+    url: '/survey/survey/' + surveyId + '/answers/export',
     method: 'post',
     params: query
   })

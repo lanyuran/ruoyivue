@@ -46,6 +46,7 @@ public class SysRegisterService
     private static final String ROLE_KEY_DOCTOR = "dept_doctor";
     private static final String APPLY_STATUS_PENDING = "0";
     private static final String APPLY_STATUS_APPROVED = "1";
+    private static final String MOBILE_REGEX = "^1[3-9]\\d{9}$";
 
     /**
      * 注册
@@ -56,6 +57,7 @@ public class SysRegisterService
         String registerRole = StringUtils.trimToEmpty(registerBody.getRegisterRole());
         SysUser sysUser = new SysUser();
         sysUser.setUserName(username);
+        sysUser.setPhonenumber(username);
 
         // 验证码开关
         boolean captchaEnabled = configService.selectCaptchaEnabled();
@@ -68,14 +70,13 @@ public class SysRegisterService
         {
             msg = "用户名不能为空";
         }
+        else if (!username.matches(MOBILE_REGEX))
+        {
+            msg = "请输入正确的手机号";
+        }
         else if (StringUtils.isEmpty(password))
         {
             msg = "用户密码不能为空";
-        }
-        else if (username.length() < UserConstants.USERNAME_MIN_LENGTH
-                || username.length() > UserConstants.USERNAME_MAX_LENGTH)
-        {
-            msg = "账户长度必须在2到20个字符之间";
         }
         else if (password.length() < UserConstants.PASSWORD_MIN_LENGTH
                 || password.length() > UserConstants.PASSWORD_MAX_LENGTH)
@@ -85,6 +86,10 @@ public class SysRegisterService
         else if (!userService.checkUserNameUnique(sysUser))
         {
             msg = "保存用户'" + username + "'失败，注册账号已存在";
+        }
+        else if (!userService.checkPhoneUnique(sysUser))
+        {
+            msg = "手机号已注册";
         }
         else
         {
@@ -99,6 +104,7 @@ public class SysRegisterService
                 return "用户角色未配置，请联系系统管理员";
             }
             sysUser.setNickName(username);
+            sysUser.setPhonenumber(username);
             sysUser.setPwdUpdateDate(DateUtils.getNowDate());
             sysUser.setPassword(SecurityUtils.encryptPassword(password));
             sysUser.setStatus("0");

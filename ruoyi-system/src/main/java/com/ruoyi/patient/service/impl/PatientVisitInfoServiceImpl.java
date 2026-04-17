@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DuplicateKeyException;
 import com.ruoyi.common.core.domain.TreeSelect;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysRole;
@@ -72,7 +73,15 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     public int insertPatientVisitInfo(PatientVisitInfo patientVisitInfo)
     {
         applyHospitalInfoOnCreate(patientVisitInfo);
-        return patientVisitInfoMapper.insertPatientVisitInfo(patientVisitInfo);
+        validateMedicalRecordNo(patientVisitInfo);
+        try
+        {
+            return patientVisitInfoMapper.insertPatientVisitInfo(patientVisitInfo);
+        }
+        catch (DuplicateKeyException ex)
+        {
+            throw new ServiceException("病例号在当前院区已存在，请检查后重试");
+        }
     }
 
     /**
@@ -85,7 +94,15 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     public int updatePatientVisitInfo(PatientVisitInfo patientVisitInfo)
     {
         applyHospitalInfoOnCreate(patientVisitInfo);
-        return patientVisitInfoMapper.updatePatientVisitInfo(patientVisitInfo);
+        validateMedicalRecordNo(patientVisitInfo);
+        try
+        {
+            return patientVisitInfoMapper.updatePatientVisitInfo(patientVisitInfo);
+        }
+        catch (DuplicateKeyException ex)
+        {
+            throw new ServiceException("病例号在当前院区已存在，请检查后重试");
+        }
     }
 
     /**
@@ -142,6 +159,27 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
             }
         }
         patientVisitInfo.setCreateBy(loginUser.getUsername());
+    }
+
+    private void validateMedicalRecordNo(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            throw new ServiceException("患者信息不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMedicalRecordNo())))
+        {
+            throw new ServiceException("病例号不能为空");
+        }
+        if (patientVisitInfo.getHospitalDeptId() == null)
+        {
+            throw new ServiceException("就诊医院不能为空");
+        }
+        int duplicateCount = patientVisitInfoMapper.countMedicalRecordNoDuplicate(patientVisitInfo);
+        if (duplicateCount > 0)
+        {
+            throw new ServiceException("病例号在当前院区已存在，请勿重复提交");
+        }
     }
 
     private void applyHospitalInfoOnCreate(PatientVisitInfo patientVisitInfo)

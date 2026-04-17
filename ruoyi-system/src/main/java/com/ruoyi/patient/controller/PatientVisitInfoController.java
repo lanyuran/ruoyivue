@@ -1,10 +1,10 @@
 package com.ruoyi.patient.controller;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletResponse;
@@ -30,35 +31,38 @@ import org.apache.poi.xssf.usermodel.XSSFDrawing;
 import org.apache.poi.xssf.usermodel.XSSFPicture;
 import org.apache.poi.xssf.usermodel.XSSFShape;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import com.ruoyi.common.annotation.Log;
+import com.ruoyi.common.config.RuoYiConfig;
+import com.ruoyi.common.constant.Constants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.TreeSelect;
-import com.ruoyi.common.enums.BusinessType;
-import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
-import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.common.core.domain.model.LoginUser;
+import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.core.redis.RedisCache;
+import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
 import com.ruoyi.common.utils.StringUtils;
-import com.ruoyi.patient.domain.PatientVisitInfo;
-import com.ruoyi.patient.domain.PatientVisitExportVO;
-import com.ruoyi.patient.service.IPatientVisitInfoService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
-import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.patient.domain.PatientVisitExportVO;
+import com.ruoyi.patient.domain.PatientVisitInfo;
+import com.ruoyi.patient.service.IPatientVisitInfoService;
 import com.ruoyi.system.service.ISysDeptService;
-import java.io.File;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.UUID;
-import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.common.config.RuoYiConfig;
-import com.ruoyi.common.constant.Constants;
 
 
 
@@ -67,6 +71,8 @@ import com.ruoyi.common.constant.Constants;
 public class PatientVisitInfoController extends BaseController
 {
     private static final DateTimeFormatter IMAGE_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final String MOBILE_SUBMIT_TOKEN_PREFIX = "patient:mobile:submit:";
+    private static final int MOBILE_SUBMIT_TOKEN_EXPIRE_MINUTES = 30;
     private static final Map<String, BiConsumer<PatientVisitInfo, String>> IMAGE_HEADER_SETTERS = new HashMap<>();
     private static final Map<Integer, BiConsumer<PatientVisitInfo, String>> IMAGE_COLUMN_SETTERS = new HashMap<>();
 
@@ -85,6 +91,9 @@ public class PatientVisitInfoController extends BaseController
 
     @Autowired
     private ISysDeptService deptService;
+
+    @Autowired
+    private RedisCache redisCache;
 
     private static final String ROLE_KEY_DEPT_DOCTOR = "dept_doctor";
 
@@ -141,17 +150,32 @@ public class PatientVisitInfoController extends BaseController
 
         fillMissingImageColumns(visitInfos, importContext);
         int successCount = 0;
-        for (PatientVisitInfo info : visitInfos)
+        List<Map<String, Object>> failureDetails = new ArrayList<>();
+        for (int i = 0; i < visitInfos.size(); i++)
         {
+            PatientVisitInfo info = visitInfos.get(i);
+            int rowNum = i + 2;
             if (info == null)
             {
+                failureDetails.add(buildImportFailure(rowNum, null, "第 " + rowNum + " 行数据为空"));
                 continue;
             }
-            info.setCreateBy(getUsername());
-            successCount += patientVisitInfoService.insertPatientVisitInfo(info);
+            try
+            {
+                info.setCreateBy(getUsername());
+                successCount += patientVisitInfoService.insertPatientVisitInfo(info);
+            }
+            catch (Exception ex)
+            {
+                failureDetails.add(buildImportFailure(rowNum, info.getMedicalRecordNo(), resolveImportErrorMessage(ex)));
+            }
         }
-        AjaxResult result = AjaxResult.success("成功导入 " + successCount + " 条就诊记录");
+        int failureCount = failureDetails.size();
+        AjaxResult result = AjaxResult.success("导入完成：成功 " + successCount + " 条，失败 " + failureCount + " 条");
         result.put("imagePaths", imagePaths);
+        result.put("successCount", successCount);
+        result.put("failureCount", failureCount);
+        result.put("failureDetails", failureDetails);
         return result;
     }
 
@@ -224,6 +248,20 @@ public class PatientVisitInfoController extends BaseController
         util.exportExcel(response, exportList, "鼻炎患者就诊信息主数据");
     }
 
+    /**
+     * 生成移动端提交 token（幂等控制）
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:add')")
+    @GetMapping("/mobile/token")
+    public AjaxResult createMobileSubmitToken()
+    {
+        String token = UUID.randomUUID().toString().replace("-", "");
+        redisCache.setCacheObject(MOBILE_SUBMIT_TOKEN_PREFIX + token, "1", MOBILE_SUBMIT_TOKEN_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        AjaxResult result = AjaxResult.success();
+        result.put("requestToken", token);
+        return result;
+    }
+
 
 
     /**
@@ -251,6 +289,20 @@ public class PatientVisitInfoController extends BaseController
     @PostMapping
     public AjaxResult add(@RequestBody PatientVisitInfo patientVisitInfo)
     {
+        patientVisitInfo.setCreateBy(getUsername());
+        return toAjax(patientVisitInfoService.insertPatientVisitInfo(patientVisitInfo));
+    }
+
+    /**
+     * 移动端提交（包含幂等 token 校验）
+     */
+    @PreAuthorize("@ss.hasPermi('patient:information:add')")
+    @Log(title = "移动端患者就诊信息提交", businessType = BusinessType.INSERT)
+    @PostMapping("/mobile/submit")
+    public AjaxResult mobileSubmit(@RequestBody PatientVisitInfo patientVisitInfo)
+    {
+        validateMobileSubmit(patientVisitInfo);
+        consumeMobileSubmitToken(patientVisitInfo.getRequestToken());
         patientVisitInfo.setCreateBy(getUsername());
         return toAjax(patientVisitInfoService.insertPatientVisitInfo(patientVisitInfo));
     }
@@ -624,6 +676,91 @@ public class PatientVisitInfoController extends BaseController
         return headers.get(columnIndex);
     }
 
+    private Map<String, Object> buildImportFailure(int rowNum, String medicalRecordNo, String reason)
+    {
+        Map<String, Object> failure = new HashMap<>();
+        failure.put("rowNum", rowNum);
+        failure.put("medicalRecordNo", StringUtils.isEmpty(medicalRecordNo) ? "-" : medicalRecordNo);
+        failure.put("reason", StringUtils.isEmpty(reason) ? "导入失败" : reason);
+        return failure;
+    }
+
+    private String resolveImportErrorMessage(Exception ex)
+    {
+        if (ex == null)
+        {
+            return "导入失败";
+        }
+        Throwable root = ex;
+        while (root.getCause() != null && root.getCause() != root)
+        {
+            root = root.getCause();
+        }
+        String msg = StringUtils.isNotEmpty(root.getMessage()) ? root.getMessage() : ex.getMessage();
+        if (StringUtils.isEmpty(msg))
+        {
+            return "导入失败";
+        }
+        int breakIndex = msg.indexOf('\n');
+        if (breakIndex > 0)
+        {
+            msg = msg.substring(0, breakIndex);
+        }
+        return msg.length() > 200 ? msg.substring(0, 200) : msg;
+    }
+
+    private void validateMobileSubmit(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            throw new ServiceException("提交数据不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getRequestToken())))
+        {
+            throw new ServiceException("提交令牌不能为空，请刷新页面后重试");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getName())))
+        {
+            throw new ServiceException("患者姓名不能为空");
+        }
+        if (patientVisitInfo.getBirthDate() == null)
+        {
+            throw new ServiceException("出生日期不能为空");
+        }
+        if (patientVisitInfo.getVisitTime() == null)
+        {
+            throw new ServiceException("就诊日期不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMedicalRecordNo())))
+        {
+            throw new ServiceException("病例号不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getPhone())))
+        {
+            throw new ServiceException("联系电话不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getChiefComplaint())))
+        {
+            throw new ServiceException("主诉不能为空");
+        }
+        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMainSymptom())))
+        {
+            throw new ServiceException("主症不能为空");
+        }
+    }
+
+    private void consumeMobileSubmitToken(String requestToken)
+    {
+        String token = StringUtils.trim(requestToken);
+        String key = MOBILE_SUBMIT_TOKEN_PREFIX + token;
+        Boolean exists = redisCache.hasKey(key);
+        if (Boolean.FALSE.equals(exists))
+        {
+            throw new ServiceException("提交令牌无效或已过期，请刷新页面后重试");
+        }
+        redisCache.deleteObject(key);
+    }
+
     private static final class ExcelImportContext
     {
         private final List<ExcelImageInfo> imageInfos;
@@ -682,3 +819,4 @@ public class PatientVisitInfoController extends BaseController
         }
     }
 }
+

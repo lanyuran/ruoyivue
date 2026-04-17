@@ -160,6 +160,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where visit_id = #{visitId}
     </update>
 
+    <select id="countMedicalRecordNoDuplicate" parameterType="PatientVisitInfo" resultType="int">
+        select count(1)
+        from patient_visit_info
+        where medical_record_no = #{medicalRecordNo}
+          and hospital_dept_id = #{hospitalDeptId}
+        <if test="visitId != null">
+          and visit_id != #{visitId}
+        </if>
+    </select>
+
     <delete id="deletePatientVisitInfoByVisitId" parameterType="Long">
         delete from patient_visit_info where visit_id = #{visitId}
     </delete>

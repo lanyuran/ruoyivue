@@ -16,7 +16,10 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.survey.domain.SurveyAnswer;
+import com.ruoyi.survey.domain.SurveyAnswerExportVO;
 import com.ruoyi.survey.domain.Survey;
+import com.ruoyi.survey.service.ISurveyAnswerService;
 import com.ruoyi.survey.service.ISurveyService;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -33,6 +36,9 @@ public class SurveyController extends BaseController
 {
     @Autowired
     private ISurveyService surveyService;
+
+    @Autowired
+    private ISurveyAnswerService surveyAnswerService;
 
     /**
      * 查询问卷列表
@@ -101,5 +107,32 @@ public class SurveyController extends BaseController
     public AjaxResult remove(@PathVariable Long[] surveyIds)
     {
         return toAjax(surveyService.deleteSurveyByIds(surveyIds));
+    }
+
+    /**
+     * 查询问卷答卷列表
+     */
+    @PreAuthorize("@ss.hasPermi('survey:survey:list')")
+    @GetMapping("/{surveyId}/answers")
+    public TableDataInfo answerList(@PathVariable("surveyId") Long surveyId, SurveyAnswer surveyAnswer)
+    {
+        startPage();
+        surveyAnswer.setSurveyId(surveyId);
+        List<SurveyAnswer> list = surveyAnswerService.selectSurveyAnswerList(surveyAnswer);
+        return getDataTable(list);
+    }
+
+    /**
+     * 导出问卷答卷明细
+     */
+    @PreAuthorize("@ss.hasPermi('survey:survey:export')")
+    @Log(title = "问卷答卷", businessType = BusinessType.EXPORT)
+    @PostMapping("/{surveyId}/answers/export")
+    public void exportAnswers(HttpServletResponse response, @PathVariable("surveyId") Long surveyId, SurveyAnswer surveyAnswer)
+    {
+        surveyAnswer.setSurveyId(surveyId);
+        List<SurveyAnswerExportVO> list = surveyAnswerService.selectSurveyAnswerExportList(surveyAnswer);
+        ExcelUtil<SurveyAnswerExportVO> util = new ExcelUtil<>(SurveyAnswerExportVO.class);
+        util.exportExcel(response, list, "问卷答卷数据");
     }
 }

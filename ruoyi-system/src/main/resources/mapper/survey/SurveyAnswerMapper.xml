@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.survey.mapper.SurveyAnswerMapper">
+
+    <resultMap id="SurveyAnswerResult" type="SurveyAnswer">
+        <id property="answerId" column="answer_id"/>
+        <result property="surveyId" column="survey_id"/>
+        <result property="surveyTitle" column="survey_title"/>
+        <result property="participantKey" column="participant_key"/>
+        <result property="submitIp" column="submit_ip"/>
+        <result property="userAgent" column="user_agent"/>
+        <result property="answerJson" column="answer_json"/>
+        <result property="submitTime" column="submit_time"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectSurveyAnswerBySurveyAndParticipant" resultMap="SurveyAnswerResult">
+        select a.answer_id,
+               a.survey_id,
+               s.title as survey_title,
+               a.participant_key,
+               a.submit_ip,
+               a.user_agent,
+               a.answer_json,
+               a.submit_time,
+               a.create_by,
+               a.create_time,
+               a.update_by,
+               a.update_time,
+               a.remark
+        from sys_survey_answer a
+        left join sys_survey s on s.survey_id = a.survey_id
+        where a.survey_id = #{surveyId}
+          and a.participant_key = #{participantKey}
+        limit 1
+    </select>
+
+    <insert id="insertSurveyAnswer" parameterType="SurveyAnswer" useGeneratedKeys="true" keyProperty="answerId">
+        insert into sys_survey_answer (
+            survey_id,
+            participant_key,
+            submit_ip,
+            user_agent,
+            answer_json,
+            submit_time,
+            create_by,
+            create_time,
+            update_by,
+            update_time,
+            remark
+        ) values (
+            #{surveyId},
+            #{participantKey},
+            #{submitIp},
+            #{userAgent},
+            #{answerJson},
+            #{submitTime},
+            #{createBy},
+            #{createTime},
+            #{updateBy},
+            #{updateTime},
+            #{remark}
+        )
+    </insert>
+
+    <insert id="batchInsertSurveyAnswerItem">
+        insert into sys_survey_answer_item (
+            answer_id,
+            survey_id,
+            question_key,
+            question_label,
+            question_type,
+            answer_text,
+            option_value,
+            score,
+            sort_no,
+            submit_time
+        ) values
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.answerId},
+                #{item.surveyId},
+                #{item.questionKey},
+                #{item.questionLabel},
+                #{item.questionType},
+                #{item.answerText},
+                #{item.optionValue},
+                #{item.score},
+                #{item.sortNo},
+                #{item.submitTime}
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectSurveyAnswerList" parameterType="SurveyAnswer" resultMap="SurveyAnswerResult">
+        select a.answer_id,
+               a.survey_id,
+               s.title as survey_title,
+               a.participant_key,
+               a.submit_ip,
+               a.user_agent,
+               a.answer_json,
+               a.submit_time,
+               a.create_by,
+               a.create_time,
+               a.update_by,
+               a.update_time,
+               a.remark
+        from sys_survey_answer a
+        left join sys_survey s on s.survey_id = a.survey_id
+        <where>
+            <if test="surveyId != null">
+                and a.survey_id = #{surveyId}
+            </if>
+            <if test="participantKey != null and participantKey != ''">
+                and a.participant_key like concat('%', #{participantKey}, '%')
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and date_format(a.submit_time, '%Y%m%d') &gt;= date_format(#{params.beginTime}, '%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and date_format(a.submit_time, '%Y%m%d') &lt;= date_format(#{params.endTime}, '%Y%m%d')
+            </if>
+        </where>
+        order by a.answer_id desc
+    </select>
+
+    <select id="selectSurveyAnswerExportList" parameterType="SurveyAnswer" resultType="SurveyAnswerExportVO">
+        select a.survey_id,
+               a.answer_id,
+               a.participant_key,
+               i.question_key,
+               i.question_label,
+               i.question_type,
+               i.answer_text,
+               i.option_value,
+               a.submit_time
+        from sys_survey_answer a
+        inner join sys_survey_answer_item i on i.answer_id = a.answer_id
+        <where>
+            <if test="surveyId != null">
+                and a.survey_id = #{surveyId}
+            </if>
+            <if test="participantKey != null and participantKey != ''">
+                and a.participant_key like concat('%', #{participantKey}, '%')
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and date_format(a.submit_time, '%Y%m%d') &gt;= date_format(#{params.beginTime}, '%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and date_format(a.submit_time, '%Y%m%d') &lt;= date_format(#{params.endTime}, '%Y%m%d')
+            </if>
+        </where>
+        order by a.answer_id desc, i.item_id asc
+    </select>
+</mapper>
+

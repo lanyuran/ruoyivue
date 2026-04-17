@@ -125,6 +125,9 @@ public class PatientVisitInfo extends BaseEntity
     @Excel(name = "25、中医外治处方")
     private String tcmExternalPrescription;
 
+    /** 移动端提交幂等 token（非持久化字段） */
+    private String requestToken;
+
     public void setVisitId(Long visitId)
     {
         this.visitId = visitId;
@@ -395,6 +398,16 @@ public class PatientVisitInfo extends BaseEntity
         return tcmExternalPrescription;
     }
 
+    public String getRequestToken()
+    {
+        return requestToken;
+    }
+
+    public void setRequestToken(String requestToken)
+    {
+        this.requestToken = requestToken;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
@@ -425,6 +438,7 @@ public class PatientVisitInfo extends BaseEntity
                 .append("tcmTreatment", getTcmTreatment())
                 .append("tcmTreatmentImagePath", getTcmTreatmentImagePath())
                 .append("tcmExternalPrescription", getTcmExternalPrescription())
+                .append("requestToken", getRequestToken())
                 .toString();
     }
 }
