@@ -1,7 +1,7 @@
 -- 用途: 项目 SQL 合集（按顺序拼接 sql/ 的 1-3 文件）
 -- Combined SQL bundle for this project
 -- Notes:
--- 1) This file concatenates numbered SQL files 1-3 under sql/ in a readable order.
+-- 1) 新库初始化只需执行 0，或按顺序执行 1 -> 2 -> 3。
 -- 2) No full backup snapshot is included.
 -- ============================================
 -- SECTION 01: 1_创建数据库.sql
@@ -96,7 +96,8 @@ create table sys_user (
   apply_role_key    varchar(100)    default null               comment '申请角色权限标识',
   apply_status      char(1)         default null               comment '申请状态(0待审批 1通过 2驳回)',
   remark            varchar(500)    default null               comment '备注',
-  primary key (user_id)
+  primary key (user_id),
+  unique key uk_sys_user_user_name (user_name)
 ) engine=innodb auto_increment=100 comment = '用户信息表';
 
 -- ----------------------------
@@ -154,7 +155,8 @@ create table sys_role (
   update_by            varchar(64)     default ''                 comment '更新者',
   update_time          datetime                                   comment '更新时间',
   remark               varchar(500)    default null               comment '备注',
-  primary key (role_id)
+  primary key (role_id),
+  unique key uk_sys_role_role_key (role_key)
 ) engine=innodb auto_increment=100 comment = '角色信息表';
 
 -- ----------------------------
@@ -700,34 +702,30 @@ INSERT INTO sys_role (
   role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
   status, del_flag, create_by, create_time, remark
 )
-SELECT '科室医生级', 'dept_doctor', 20, '3', 1, 1, '0', '0', 'admin', sysdate(), '科室医生级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'dept_doctor');
+SELECT '医生级', 'doctor', 20, '3', 1, 1, '0', '0', 'admin', sysdate(), '医生级'
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'doctor');
 
 INSERT INTO sys_role (
   role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
   status, del_flag, create_by, create_time, remark
 )
-SELECT '科室主管级', 'dept_manager', 30, '4', 1, 1, '0', '0', 'admin', sysdate(), '科室主管级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'dept_manager');
-
-INSERT INTO sys_role (
-  role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
-  status, del_flag, create_by, create_time, remark
-)
-SELECT '院区主管级', 'campus_manager', 40, '1', 1, 1, '0', '0', 'admin', sysdate(), '院区主管级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'campus_manager');
+SELECT '主管级', 'manager', 30, '1', 1, 1, '0', '0', 'admin', sysdate(), '主管级'
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'manager');
 
 UPDATE sys_role
 SET data_scope = '1'
-WHERE role_key = 'campus_manager';
+WHERE role_key = 'manager';
 
 -- Menu access: 用户级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'user' AND m.menu_name = '数据上传';
+WHERE r.role_key = 'user' AND m.menu_name = '数据上传'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
 WHERE r.role_key = 'user'
@@ -736,71 +734,55 @@ WHERE r.role_key = 'user'
     'patient:information:add',
     'patient:information:edit',
     'patient:information:query'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
 -- Menu access: 科室医生级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_doctor' AND m.menu_name IN ('数据上传', '数据查询');
+WHERE r.role_key = 'doctor' AND m.menu_name IN ('数据上传', '数据查询')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_doctor'
+WHERE r.role_key = 'doctor'
   AND m.perms IN (
     'patient:information:list',
     'patient:information:add',
     'patient:information:edit',
     'patient:information:query'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Menu access: 科室主管级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+-- Menu access: 主管级
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager' AND m.menu_name = '系统管理';
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理');
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager'
-  AND m.perms IN (
-    'patient:information:list',
-    'patient:information:add',
-    'patient:information:edit',
-    'patient:information:query',
-    'system:user:list',
-    'system:user:query',
-    'system:user:add',
-    'system:user:edit',
-    'system:user:remove',
-    'system:user:resetPwd',
-    'system:user:import',
-    'system:user:export',
-    'system:user:approveDoctor'
+WHERE r.role_key = 'manager' AND m.menu_name = '系统管理'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Menu access: 院区主管级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager' AND m.menu_name = '系统管理';
+WHERE r.role_key = 'manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理', '医院管理')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理', '医院管理');
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager'
+WHERE r.role_key = 'manager'
   AND m.perms IN (
     'patient:information:list',
     'patient:information:add',
@@ -820,19 +802,28 @@ WHERE r.role_key = 'campus_manager'
     'system:dept:add',
     'system:dept:edit',
     'system:dept:remove'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Ensure System Management menu is bound to dept_manager + campus_manager
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+-- Ensure System Management menu is bound to manager
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT role_id, 1
-FROM sys_role
-WHERE role_key IN ('dept_manager','campus_manager');
+FROM sys_role r
+WHERE role_key = 'manager'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = 1
+  );
 
 -- Menu access: 管理员级（全部菜单与权限）
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'admin';
+WHERE r.role_key = 'admin'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
 -- ============================================
 -- Quartz 调度表
@@ -1022,32 +1013,65 @@ USE fl;
 SET NAMES utf8mb4 COLLATE utf8mb4_general_ci;
 # MySQL 8.4 LTS 
 
-####################################
-######## TABLE patient_info ########
-####################################
+#########################################
+######## TABLE patient_profile ########
+#########################################
 
-DROP TABLE IF EXISTS `patient_info`;
+DROP TABLE IF EXISTS `patient_profile`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+/*!40101 SET character_set_client = utf8mb4 */;
 
-CREATE TABLE `patient_info` (
-        `patient_id`        int(11) NOT NULL AUTO_INCREMENT,
-        `name`              varchar(50) NOT NULL,
-        `gender`            enum('男','女') NOT NULL,
-        `birth_date`        date NOT NULL,
-        `visit_time`        datetime NOT NULL,
-        `hospital`          varchar(100) NOT NULL,
-        `medical_record_no` varchar(50) NOT NULL,
-        `parent_name`       varchar(50) NOT NULL,
-        `phone`             varchar(20) NOT NULL,
-        `past_medication`   text,
-        `chief_complaint`   text NOT NULL,
-        PRIMARY KEY (`patient_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `patient_profile` (
+      `patient_id`   BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '患者主档ID',
+      `user_id`      BIGINT(20) DEFAULT NULL COMMENT '关联账号ID',
+      `name`         VARCHAR(50) NOT NULL COMMENT '患者姓名',
+      `gender`       ENUM('男','女') DEFAULT NULL COMMENT '患者性别',
+      `birth_date`   DATE DEFAULT NULL COMMENT '出生日期',
+      `parent_name`  VARCHAR(50) DEFAULT NULL COMMENT '监护人姓名',
+      `phone`        VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
+      `create_by`    VARCHAR(64) DEFAULT '' COMMENT '创建者',
+      `create_time`  DATETIME DEFAULT NULL COMMENT '创建时间',
+      `update_by`    VARCHAR(64) DEFAULT '' COMMENT '更新者',
+      `update_time`  DATETIME DEFAULT NULL COMMENT '更新时间',
+      `remark`       VARCHAR(500) DEFAULT NULL COMMENT '备注',
+      PRIMARY KEY (`patient_id`),
+      UNIQUE KEY `uk_patient_profile_user_id` (`user_id`) COMMENT '账号唯一绑定患者主档',
+      KEY `idx_patient_profile_phone` (`phone`) COMMENT '联系电话索引',
+      KEY `idx_patient_profile_name_birth` (`name`, `birth_date`) COMMENT '患者姓名出生日期索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者主档表';
 
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-######## TABLE patient_info end ########
+######## TABLE patient_profile end ########
+
+#######################################
+######## TABLE patient_chart ########
+#######################################
+
+DROP TABLE IF EXISTS `patient_chart`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `patient_chart` (
+      `chart_id`           BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '病历映射ID',
+      `patient_id`         BIGINT(20) NOT NULL COMMENT '患者主档ID',
+      `hospital_dept_id`   BIGINT(20) NOT NULL COMMENT '医院部门ID',
+      `hospital`           VARCHAR(100) DEFAULT NULL COMMENT '医院名称',
+      `medical_record_no`  VARCHAR(50) NOT NULL COMMENT '病历号',
+      `create_by`          VARCHAR(64) DEFAULT '' COMMENT '创建者',
+      `create_time`        DATETIME DEFAULT NULL COMMENT '创建时间',
+      `update_by`          VARCHAR(64) DEFAULT '' COMMENT '更新者',
+      `update_time`        DATETIME DEFAULT NULL COMMENT '更新时间',
+      `remark`             VARCHAR(500) DEFAULT NULL COMMENT '备注',
+      PRIMARY KEY (`chart_id`),
+      UNIQUE KEY `uk_patient_chart_hospital_record` (`hospital_dept_id`, `medical_record_no`) COMMENT '院区内病历号唯一',
+      KEY `idx_patient_chart_patient_id` (`patient_id`) COMMENT '患者主档索引',
+      KEY `idx_patient_chart_patient_hospital` (`patient_id`, `hospital_dept_id`) COMMENT '患者医院索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者医院病历映射表';
+
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+######## TABLE patient_chart end ########
 
 ################################################################
 ######## Table structure for table `patient_visit_info` ########
@@ -1059,10 +1083,13 @@ DROP TABLE IF EXISTS `patient_visit_info`;
 
 CREATE TABLE `patient_visit_info` (
       `visit_id`                  INT(11) NOT NULL AUTO_INCREMENT COMMENT '0.序号（主键）',
+      `patient_id`                BIGINT(20) DEFAULT NULL COMMENT '患者主档ID',
+      `chart_id`                  BIGINT(20) DEFAULT NULL COMMENT '病历映射ID',
       `name`                      VARCHAR(50) COMMENT '1、姓名',
       `gender`                    ENUM('男','女') COMMENT '2、性别',
       `birth_date`                DATE COMMENT '3、出生日期',
       `visit_time`                DATE COMMENT '4、就诊时间',
+      `fill_time`                 DATETIME DEFAULT NULL COMMENT '填表时间',
       `hospital`                  VARCHAR(100) COMMENT '5、就诊医院',
       `hospital_dept_id`          BIGINT(20) COMMENT '就诊医院所属部门ID',
       `medical_record_no`         VARCHAR(50) COMMENT '6、病历号',
@@ -1091,12 +1118,15 @@ CREATE TABLE `patient_visit_info` (
       `update_time`               DATETIME DEFAULT NULL COMMENT '更新时间',
       `remark`                    VARCHAR(500) DEFAULT NULL COMMENT '备注',
       PRIMARY KEY (`visit_id`),
-      UNIQUE KEY `uk_hospital_medical_record_no` (`hospital_dept_id`, `medical_record_no`) COMMENT '院区内病例号唯一',
+      UNIQUE KEY `uk_hospital_record_visit` (`hospital_dept_id`, `medical_record_no`, `visit_time`, `fill_time`) COMMENT '院区内同一病历号同日同填表时间唯一',
+      KEY `idx_patient_id` (`patient_id`) COMMENT '患者主档索引',
+      KEY `idx_chart_id` (`chart_id`) COMMENT '病历映射索引',
+      KEY `idx_fill_time` (`fill_time`) COMMENT '填表时间索引',
       KEY `idx_medical_record_no` (`medical_record_no`) COMMENT '病历号索引',
       KEY `idx_visit_time` (`visit_time`) COMMENT '就诊时间索引',
       KEY `idx_hospital_dept_id` (`hospital_dept_id`) COMMENT '就诊医院部门索引',
       KEY `idx_hospital` (`hospital`) COMMENT '医院名称索引'
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='鼻炎患者就诊信息主表（包含图片路径等扩展字段）';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者就诊记录表（保留患者基础信息快照与图片路径等扩展字段）';
 
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1164,4 +1194,3 @@ CREATE TABLE sys_survey_answer_item (
   KEY idx_item_survey_id (survey_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='问卷答题明细表';
 -- ==== END 3_业务.sql ====
-

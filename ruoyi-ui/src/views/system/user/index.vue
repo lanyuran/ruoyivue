@@ -416,7 +416,7 @@ export default {
       })
     },
     formatApplyStatus(row) {
-      if (!row || row.applyRoleKey !== "dept_doctor") {
+      if (!row || row.applyRoleKey !== "doctor") {
         return "-"
       }
       const map = {
@@ -427,7 +427,7 @@ export default {
       return map[row.applyStatus] || "待处理"
     },
     canApproveDoctor(row) {
-      return row && row.applyRoleKey === "dept_doctor" && row.applyStatus === "0"
+      return row && row.applyRoleKey === "doctor" && row.applyStatus === "0"
     },
     handleDoctorApproval(row, status) {
       const actionText = status === "1" ? "通过" : "驳回"

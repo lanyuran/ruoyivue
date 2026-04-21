@@ -1,8 +1,6 @@
 package com.ruoyi.web.controller.system;
 
 import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.lang3.ArrayUtils;
@@ -43,8 +41,6 @@ import com.ruoyi.system.service.ISysUserService;
 @RequestMapping("/system/user")
 public class SysUserController extends BaseController
 {
-    private static final String DEPRECATED_ROLE_KEY_DEPT_MANAGER = "dept_manager";
-
     @Autowired
     private ISysUserService userService;
 
@@ -106,7 +102,6 @@ public class SysUserController extends BaseController
     public AjaxResult getInfo(@PathVariable(value = "userId", required = false) Long userId)
     {
         AjaxResult ajax = AjaxResult.success();
-        Set<Long> keepRoleIds = new HashSet<>();
         if (StringUtils.isNotNull(userId))
         {
             userService.checkUserDataScope(userId);
@@ -115,13 +110,12 @@ public class SysUserController extends BaseController
             ajax.put("postIds", postService.selectPostListByUserId(userId));
             if (sysUser != null && sysUser.getRoles() != null)
             {
-                keepRoleIds = sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toSet());
                 ajax.put("roleIds", sysUser.getRoles().stream().map(SysRole::getRoleId).collect(Collectors.toList()));
             }
         }
         List<SysRole> roles = roleService.selectRoleAll();
         roles = SysUser.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList());
-        ajax.put("roles", filterDeprecatedRoles(roles, keepRoleIds));
+        ajax.put("roles", roles);
         ajax.put("posts", postService.selectPostAll());
         return ajax;
     }
@@ -134,10 +128,6 @@ public class SysUserController extends BaseController
     @PostMapping
     public AjaxResult add(@Validated @RequestBody SysUser user)
     {
-        if (containsDeprecatedRole(user.getRoleIds()))
-        {
-            return deprecatedRoleError();
-        }
         deptService.checkDeptDataScope(user.getDeptId());
         roleService.checkRoleDataScope(user.getRoleIds());
         if (!userService.checkUserNameUnique(user))
@@ -165,10 +155,6 @@ public class SysUserController extends BaseController
     @PutMapping
     public AjaxResult edit(@Validated @RequestBody SysUser user)
     {
-        if (containsDeprecatedRole(user.getRoleIds()))
-        {
-            return deprecatedRoleError();
-        }
         userService.checkUserAllowed(user);
         userService.checkUserDataScope(user.getUserId());
         deptService.checkDeptDataScope(user.getDeptId());
@@ -290,7 +276,7 @@ public class SysUserController extends BaseController
         List<SysRole> roles = roleService.selectRolesByUserId(userId);
         ajax.put("user", user);
         roles = SysUser.isAdmin(userId) ? roles : roles.stream().filter(r -> !r.isAdmin()).collect(Collectors.toList());
-        ajax.put("roles", filterDeprecatedRoles(roles, collectFlagRoleIds(roles)));
+        ajax.put("roles", roles);
         return ajax;
     }
 
@@ -302,69 +288,10 @@ public class SysUserController extends BaseController
     @PutMapping("/authRole")
     public AjaxResult insertAuthRole(Long userId, Long[] roleIds)
     {
-        if (containsDeprecatedRole(roleIds))
-        {
-            return deprecatedRoleError();
-        }
         userService.checkUserDataScope(userId);
         roleService.checkRoleDataScope(roleIds);
         userService.insertUserAuth(userId, roleIds);
         return success();
-    }
-
-    private List<SysRole> filterDeprecatedRoles(List<SysRole> roles, Set<Long> keepRoleIds)
-    {
-        if (roles == null || roles.isEmpty())
-        {
-            return roles;
-        }
-        Set<Long> keep = keepRoleIds == null ? new HashSet<>() : keepRoleIds;
-        return roles.stream()
-            .filter(role -> role != null)
-            .filter(role -> !DEPRECATED_ROLE_KEY_DEPT_MANAGER.equals(role.getRoleKey()) || keep.contains(role.getRoleId()) || role.isFlag())
-            .collect(Collectors.toList());
-    }
-
-    private Set<Long> collectFlagRoleIds(List<SysRole> roles)
-    {
-        Set<Long> ids = new HashSet<>();
-        if (roles == null)
-        {
-            return ids;
-        }
-        for (SysRole role : roles)
-        {
-            if (role != null && role.isFlag())
-            {
-                ids.add(role.getRoleId());
-            }
-        }
-        return ids;
-    }
-
-    private boolean containsDeprecatedRole(Long[] roleIds)
-    {
-        if (ArrayUtils.isEmpty(roleIds))
-        {
-            return false;
-        }
-        Set<Long> deprecatedRoleIds = roleService.selectRoleAll().stream()
-            .filter(role -> role != null && DEPRECATED_ROLE_KEY_DEPT_MANAGER.equals(role.getRoleKey()))
-            .map(SysRole::getRoleId)
-            .collect(Collectors.toSet());
-        for (Long roleId : roleIds)
-        {
-            if (deprecatedRoleIds.contains(roleId))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private AjaxResult deprecatedRoleError()
-    {
-        return error("角色 dept_manager 已冻结，禁止新分配");
     }
 
     /**

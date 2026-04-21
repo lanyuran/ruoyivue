@@ -6,10 +6,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     
     <resultMap type="PatientVisitInfo" id="PatientVisitInfoResult">
         <result property="visitId"    column="visit_id"    />
+        <result property="patientId"    column="patient_id"    />
+        <result property="chartId"    column="chart_id"    />
         <result property="name"    column="name"    />
         <result property="gender"    column="gender"    />
         <result property="birthDate"    column="birth_date"    />
         <result property="visitTime"    column="visit_time"    />
+        <result property="fillTime"    column="fill_time"    />
         <result property="hospital"    column="hospital"    />
         <result property="hospitalDeptId"    column="hospital_dept_id"    />
         <result property="medicalRecordNo"    column="medical_record_no"    />
@@ -36,7 +39,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectPatientVisitInfoVo">
-        select p.visit_id, p.name, p.gender, p.birth_date, p.visit_time, p.hospital, p.hospital_dept_id, p.medical_record_no, p.parent_name, p.phone, p.past_medication, p.chief_complaint, p.main_symptom, p.comorbidity, p.physical_exam, p.tongue_pulse, p.allergen_total_ige, p.allergen_specific_ige, p.tcm_diagnosis, p.tcm_treatment, p.tcm_external_prescription, p.tongue_image_path, p.blood_test_image_path, p.inflammation_image_path, p.liver_kidney_image_path, p.renal_injury_image_path, p.tcm_treatment_image_path, p.create_by
+        select p.visit_id, p.patient_id, p.chart_id, p.name, p.gender, p.birth_date, p.visit_time, p.fill_time, p.hospital, p.hospital_dept_id, p.medical_record_no, p.parent_name, p.phone, p.past_medication, p.chief_complaint, p.main_symptom, p.comorbidity, p.physical_exam, p.tongue_pulse, p.allergen_total_ige, p.allergen_specific_ige, p.tcm_diagnosis, p.tcm_treatment, p.tcm_external_prescription, p.tongue_image_path, p.blood_test_image_path, p.inflammation_image_path, p.liver_kidney_image_path, p.renal_injury_image_path, p.tcm_treatment_image_path, p.create_by
         from patient_visit_info p
         left join sys_user u on p.create_by = u.user_name
         left join sys_dept d on u.dept_id = d.dept_id
@@ -46,12 +49,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectPatientVisitInfoVo"/>
         where 1 = 1
             <if test="visitId != null"> and p.visit_id = #{visitId}</if>
+            <if test="patientId != null"> and p.patient_id = #{patientId}</if>
             <if test="name != null  and name != ''"> and p.name like concat('%', #{name}, '%')</if>
             <if test="hospital != null  and hospital != ''"> and p.hospital like concat('%', #{hospital}, '%')</if>
             <if test="medicalRecordNo != null  and medicalRecordNo != ''"> and p.medical_record_no like concat('%', #{medicalRecordNo}, '%')</if>
             <if test="phone != null  and phone != ''"> and p.phone like concat('%', #{phone}, '%')</if>
             <if test="mainSymptom != null  and mainSymptom != ''"> and p.main_symptom like concat('%', #{mainSymptom}, '%')</if>
             <if test="createBy != null  and createBy != ''"> and p.create_by = #{createBy}</if>
+            <if test="params.patientUserId != null">
+                and exists (
+                    select 1
+                    from patient_profile pp
+                    where pp.patient_id = p.patient_id
+                      and pp.user_id = #{params.patientUserId}
+                )
+            </if>
             <if test="params.hospitalDeptId != null">
                 and p.hospital_dept_id = #{params.hospitalDeptId}
             </if>
@@ -69,9 +81,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into patient_visit_info
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">name,</if>
+            <if test="patientId != null">patient_id,</if>
+            <if test="chartId != null">chart_id,</if>
             <if test="gender != null and gender != ''">gender,</if>
             <if test="birthDate != null">birth_date,</if>
             <if test="visitTime != null">visit_time,</if>
+            <if test="fillTime != null">fill_time,</if>
             <if test="hospital != null and hospital != ''">hospital,</if>
             <if test="hospitalDeptId != null">hospital_dept_id,</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no,</if>
@@ -98,9 +113,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
          </trim>
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="name != null and name != ''">#{name},</if>
+            <if test="patientId != null">#{patientId},</if>
+            <if test="chartId != null">#{chartId},</if>
             <if test="gender != null and gender != ''">#{gender},</if>
             <if test="birthDate != null">#{birthDate},</if>
             <if test="visitTime != null">#{visitTime},</if>
+            <if test="fillTime != null">#{fillTime},</if>
             <if test="hospital != null and hospital != ''">#{hospital},</if>
             <if test="hospitalDeptId != null">#{hospitalDeptId},</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">#{medicalRecordNo},</if>
@@ -131,9 +149,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update patient_visit_info
         <trim prefix="SET" suffixOverrides=",">
             <if test="name != null and name != ''">name = #{name},</if>
+            <if test="patientId != null">patient_id = #{patientId},</if>
+            <if test="chartId != null">chart_id = #{chartId},</if>
             <if test="gender != null and gender != ''">gender = #{gender},</if>
             <if test="birthDate != null">birth_date = #{birthDate},</if>
             <if test="visitTime != null">visit_time = #{visitTime},</if>
+            <if test="fillTime != null">fill_time = #{fillTime},</if>
             <if test="hospital != null and hospital != ''">hospital = #{hospital},</if>
             <if test="hospitalDeptId != null">hospital_dept_id = #{hospitalDeptId},</if>
             <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no = #{medicalRecordNo},</if>
@@ -160,11 +181,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where visit_id = #{visitId}
     </update>
 
-    <select id="countMedicalRecordNoDuplicate" parameterType="PatientVisitInfo" resultType="int">
+    <select id="countVisitDuplicate" parameterType="PatientVisitInfo" resultType="int">
         select count(1)
         from patient_visit_info
         where medical_record_no = #{medicalRecordNo}
           and hospital_dept_id = #{hospitalDeptId}
+          and visit_time = #{visitTime}
+          and fill_time = #{fillTime}
         <if test="visitId != null">
           and visit_id != #{visitId}
         </if>

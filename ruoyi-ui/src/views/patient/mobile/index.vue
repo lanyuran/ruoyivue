@@ -6,7 +6,10 @@
           <h2>患者信息填写</h2>
           <p>无需注册，直接填写并提交；提交成功后会自动生成账号，并进入文档式详情页。</p>
         </div>
-        <div class="hero-tip">自动生成账号：手机号 / 初始密码：123456</div>
+        <div class="hero-actions">
+          <div class="hero-tip">自动生成账号：手机号 / 初始密码：123456</div>
+          <el-button plain size="mini" @click="goHome">返回首页</el-button>
+        </div>
       </div>
 
       <el-steps :active="activeStep" finish-status="success" simple>
@@ -67,17 +70,66 @@
           <el-form-item label="主诉" prop="chiefComplaint">
             <el-input v-model="form.chiefComplaint" type="textarea" :rows="3" placeholder="请描述主要不适" />
           </el-form-item>
-          <el-form-item label="主症" prop="mainSymptom">
-            <el-input v-model="form.mainSymptom" type="textarea" :rows="3" placeholder="请描述主要症状" />
+          <el-form-item label="主证" prop="mainSymptomSelections">
+            <div class="choice-hint">请勾选存在的症状，勾选代表“是”，未勾选代表“否”。</div>
+            <el-checkbox-group v-model="form.mainSymptomSelections" class="choice-grid">
+              <el-checkbox v-for="item in mainSymptomOptions" :key="item" :label="item">{{ item }}</el-checkbox>
+            </el-checkbox-group>
+            <el-input
+              v-if="form.mainSymptomSelections && form.mainSymptomSelections.includes('其他')"
+              v-model="form.mainSymptomOther"
+              class="choice-other"
+              placeholder="请填写其他主证"
+            />
           </el-form-item>
-          <el-form-item label="共患疾病">
-            <el-input v-model="form.comorbidity" type="textarea" :rows="2" placeholder="选填" />
+          <el-form-item label="共患病">
+            <div class="choice-hint">请勾选已明确存在的共患病，如无可不选。</div>
+            <el-checkbox-group v-model="form.comorbiditySelections" class="choice-grid">
+              <el-checkbox v-for="item in comorbidityOptions" :key="item" :label="item">{{ item }}</el-checkbox>
+            </el-checkbox-group>
+            <el-input
+              v-if="form.comorbiditySelections && form.comorbiditySelections.includes('其他')"
+              v-model="form.comorbidityOther"
+              class="choice-other"
+              placeholder="请填写其他共患病"
+            />
           </el-form-item>
           <el-form-item label="体格检查">
-            <el-input v-model="form.physicalExam" type="textarea" :rows="2" placeholder="选填" />
+            <div class="choice-hint">请勾选检查中存在的体征，如无可不选。</div>
+            <el-checkbox-group v-model="form.physicalExamSelections" class="choice-grid">
+              <el-checkbox v-for="item in physicalExamOptions" :key="item" :label="item">{{ item }}</el-checkbox>
+            </el-checkbox-group>
+            <el-input
+              v-if="form.physicalExamSelections && form.physicalExamSelections.includes('其他')"
+              v-model="form.physicalExamOther"
+              class="choice-other"
+              placeholder="请填写其他体格检查结果"
+            />
           </el-form-item>
           <el-form-item label="舌脉">
             <el-input v-model="form.tonguePulse" type="textarea" :rows="2" placeholder="选填" />
+          </el-form-item>
+          <el-form-item label="总IgE">
+            <el-input v-model="form.allergenTotalIge" placeholder="选填，例如：120 IU/ml" />
+          </el-form-item>
+          <el-form-item label="特异性IgE">
+            <el-input v-model="form.allergenSpecificIge" placeholder="选填" />
+          </el-form-item>
+          <el-form-item label="中医诊断">
+            <el-input v-model="form.tcmDiagnosis" type="textarea" :rows="2" placeholder="选填" />
+          </el-form-item>
+          <el-form-item label="中医治法">
+            <el-input v-model="form.tcmTreatment" type="textarea" :rows="2" placeholder="选填" />
+          </el-form-item>
+          <el-form-item label="中医外治">
+            <el-checkbox-group v-model="form.tcmExternalSelections" class="choice-stack">
+              <el-checkbox v-for="item in tcmExternalOptions" :key="item" :label="item">{{ item }}</el-checkbox>
+            </el-checkbox-group>
+            <el-input
+              v-model="form.tcmExternalOther"
+              class="choice-other"
+              placeholder="其他外治处方，选填"
+            />
           </el-form-item>
         </div>
 
@@ -105,6 +157,7 @@
       </el-form>
 
       <div class="actions">
+        <el-button plain @click="goHome">返回首页</el-button>
         <el-button @click="handlePrev" :disabled="activeStep === 0">上一步</el-button>
         <el-button v-if="activeStep < 2" type="primary" @click="handleNext">下一步</el-button>
         <el-button v-else type="primary" :loading="submitting" @click="handleSubmit">提交</el-button>
@@ -119,10 +172,27 @@ import { mobileSubmitInformation, getMobileSubmitToken, listHospitalOptions } fr
 export default {
   name: 'PatientMobileCollect',
   data() {
+    const validateMainSymptom = (rule, value, callback) => {
+      const selected = this.form && this.form.mainSymptomSelections ? this.form.mainSymptomSelections : []
+      const selectedSymptoms = selected.filter(item => item !== '其他')
+      const other = this.form && this.form.mainSymptomOther ? this.form.mainSymptomOther.trim() : ''
+      if (selectedSymptoms.length || other) {
+        callback()
+        return
+      }
+      callback(new Error('请至少选择一项主证'))
+    }
     return {
       activeStep: 0,
       submitting: false,
       hospitalOptions: [],
+      mainSymptomOptions: ['鼻塞', '鼻痒', '喷嚏', '流清涕', '流黄涕', '发热恶寒', '咽痒', '口干', '鼻腔干燥', '神疲乏力', '少气懒言', '自汗', '胃纳欠佳', '面色无华', '形寒肢冷', '腰膝酸软', '其他'],
+      comorbidityOptions: ['鼻窦炎', '鼻息肉', '过敏性哮喘', '过敏性皮炎', '过敏性结膜炎', '过敏性咳嗽', '抽动障碍', '腺样体肥大', '分泌性中耳炎', '其他'],
+      physicalExamOptions: ['鼻黏膜色红', '鼻黏膜色淡', '鼻甲肿胀', '鼻道水样分泌物', '其他'],
+      tcmExternalOptions: [
+        '香嗅疗法：鼻炎通窍散，每日闻香2次，每次2分钟，睡觉时放于枕边。',
+        '耳穴压豆疗法：使用王不留行子耳穴贴，双耳穴位各选取内鼻、外鼻，每周二次，每次贴3天，中间休息1天，每天捏各穴位2次，每次100下。'
+      ],
       form: {},
       rules: {
         name: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
@@ -134,7 +204,7 @@ export default {
           { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
         ],
         chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
-        mainSymptom: [{ required: true, message: '请输入主症', trigger: 'blur' }]
+        mainSymptomSelections: [{ validator: validateMainSymptom, trigger: 'change' }]
       }
     }
   },
@@ -159,8 +229,14 @@ export default {
         pastMedication: undefined,
         chiefComplaint: undefined,
         mainSymptom: undefined,
+        mainSymptomSelections: [],
+        mainSymptomOther: undefined,
         comorbidity: undefined,
+        comorbiditySelections: [],
+        comorbidityOther: undefined,
         physicalExam: undefined,
+        physicalExamSelections: [],
+        physicalExamOther: undefined,
         tonguePulse: undefined,
         tongueImagePath: undefined,
         allergenTotalIge: undefined,
@@ -172,7 +248,9 @@ export default {
         tcmDiagnosis: undefined,
         tcmTreatment: undefined,
         tcmTreatmentImagePath: undefined,
-        tcmExternalPrescription: undefined
+        tcmExternalPrescription: undefined,
+        tcmExternalSelections: [],
+        tcmExternalOther: undefined
       }
     },
     loadHospitalOptions() {
@@ -191,6 +269,9 @@ export default {
       const selected = this.hospitalOptions.find(item => item.deptId === value)
       this.form.hospital = selected ? selected.deptName : undefined
     },
+    goHome() {
+      this.$router.push('/index')
+    },
     handlePrev() {
       if (this.activeStep > 0) {
         this.activeStep -= 1
@@ -202,11 +283,14 @@ export default {
     handleSubmit() {
       this.$refs.form.validate(valid => {
         if (!valid) {
-          this.activeStep = 0
+          this.activeStep = this.resolveInvalidStep()
           return
         }
+        this.syncChoiceFields()
         this.submitting = true
-        mobileSubmitInformation(this.form).then(res => {
+        this.refreshToken().then(() => {
+          return mobileSubmitInformation(this.buildSubmitPayload())
+        }).then(res => {
           this.$message.success('提交成功，正在进入详情页')
           this.$router.replace({
             path: `/patient-mobile/detail/${res.visitId}`,
@@ -223,6 +307,43 @@ export default {
           this.submitting = false
         })
       })
+    },
+    resolveInvalidStep() {
+      if (!this.form.name || !this.form.birthDate || !this.form.visitTime || !this.form.hospitalDeptId || !this.form.phone) {
+        return 0
+      }
+      const selectedSymptoms = (this.form.mainSymptomSelections || []).filter(item => item !== '其他')
+      const mainSymptomOther = this.form.mainSymptomOther ? this.form.mainSymptomOther.trim() : ''
+      if (!this.form.chiefComplaint || (!selectedSymptoms.length && !mainSymptomOther)) {
+        return 1
+      }
+      return 2
+    },
+    syncChoiceFields() {
+      this.form.mainSymptom = this.buildSelectionText(this.form.mainSymptomSelections, this.form.mainSymptomOther, '')
+      this.form.comorbidity = this.buildSelectionText(this.form.comorbiditySelections, this.form.comorbidityOther, '无')
+      this.form.physicalExam = this.buildSelectionText(this.form.physicalExamSelections, this.form.physicalExamOther, '无')
+      this.form.tcmExternalPrescription = this.buildSelectionText(this.form.tcmExternalSelections, this.form.tcmExternalOther, '')
+    },
+    buildSelectionText(selected, other, emptyText) {
+      const result = (selected || []).filter(item => item !== '其他')
+      const otherText = other ? other.trim() : ''
+      if (otherText) {
+        result.push(otherText)
+      }
+      return result.length ? result.join('、') : emptyText
+    },
+    buildSubmitPayload() {
+      const payload = { ...this.form }
+      delete payload.mainSymptomSelections
+      delete payload.mainSymptomOther
+      delete payload.comorbiditySelections
+      delete payload.comorbidityOther
+      delete payload.physicalExamSelections
+      delete payload.physicalExamOther
+      delete payload.tcmExternalSelections
+      delete payload.tcmExternalOther
+      return payload
     }
   }
 }
@@ -274,6 +395,12 @@ export default {
   white-space: nowrap;
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .form-wrap {
   margin-top: 20px;
 }
@@ -285,6 +412,30 @@ export default {
   border-radius: 8px;
   color: #64748b;
   font-size: 13px;
+}
+
+.choice-hint {
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 12px;
+}
+
+.choice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.choice-other {
+  margin-top: 10px;
 }
 
 .actions {
@@ -304,8 +455,17 @@ export default {
     align-items: flex-start;
   }
 
+  .hero-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .hero-tip {
     white-space: normal;
+  }
+
+  .choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 </style>

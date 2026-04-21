@@ -1,34 +1,68 @@
 -- 用途: 业务表（患者信息、就诊主表、问卷；不含示例数据）
+-- 说明: 新库初始化时直接执行本文件即可，无需额外增量脚本。
 USE fl;
 SET NAMES utf8mb4 COLLATE utf8mb4_general_ci;
 # MySQL 8.4 LTS 
 
-####################################
-######## TABLE patient_info ########
-####################################
+#########################################
+######## TABLE patient_profile ########
+#########################################
 
-DROP TABLE IF EXISTS `patient_info`;
+DROP TABLE IF EXISTS `patient_profile`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
+/*!40101 SET character_set_client = utf8mb4 */;
 
-CREATE TABLE `patient_info` (
-        `patient_id`        int(11) NOT NULL AUTO_INCREMENT,
-        `name`              varchar(50) NOT NULL,
-        `gender`            enum('男','女') NOT NULL,
-        `birth_date`        date NOT NULL,
-        `visit_time`        datetime NOT NULL,
-        `hospital`          varchar(100) NOT NULL,
-        `medical_record_no` varchar(50) NOT NULL,
-        `parent_name`       varchar(50) NOT NULL,
-        `phone`             varchar(20) NOT NULL,
-        `past_medication`   text,
-        `chief_complaint`   text NOT NULL,
-        PRIMARY KEY (`patient_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE TABLE `patient_profile` (
+      `patient_id`   BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '患者主档ID',
+      `user_id`      BIGINT(20) DEFAULT NULL COMMENT '关联账号ID',
+      `name`         VARCHAR(50) NOT NULL COMMENT '患者姓名',
+      `gender`       ENUM('男','女') DEFAULT NULL COMMENT '患者性别',
+      `birth_date`   DATE DEFAULT NULL COMMENT '出生日期',
+      `parent_name`  VARCHAR(50) DEFAULT NULL COMMENT '监护人姓名',
+      `phone`        VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
+      `create_by`    VARCHAR(64) DEFAULT '' COMMENT '创建者',
+      `create_time`  DATETIME DEFAULT NULL COMMENT '创建时间',
+      `update_by`    VARCHAR(64) DEFAULT '' COMMENT '更新者',
+      `update_time`  DATETIME DEFAULT NULL COMMENT '更新时间',
+      `remark`       VARCHAR(500) DEFAULT NULL COMMENT '备注',
+      PRIMARY KEY (`patient_id`),
+      UNIQUE KEY `uk_patient_profile_user_id` (`user_id`) COMMENT '账号唯一绑定患者主档',
+      KEY `idx_patient_profile_phone` (`phone`) COMMENT '联系电话索引',
+      KEY `idx_patient_profile_name_birth` (`name`, `birth_date`) COMMENT '患者姓名出生日期索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者主档表';
 
 /*!40101 SET character_set_client = @saved_cs_client */;
 
-######## TABLE patient_info end ########
+######## TABLE patient_profile end ########
+
+#######################################
+######## TABLE patient_chart ########
+#######################################
+
+DROP TABLE IF EXISTS `patient_chart`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `patient_chart` (
+      `chart_id`           BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '病历映射ID',
+      `patient_id`         BIGINT(20) NOT NULL COMMENT '患者主档ID',
+      `hospital_dept_id`   BIGINT(20) NOT NULL COMMENT '医院部门ID',
+      `hospital`           VARCHAR(100) DEFAULT NULL COMMENT '医院名称',
+      `medical_record_no`  VARCHAR(50) NOT NULL COMMENT '病历号',
+      `create_by`          VARCHAR(64) DEFAULT '' COMMENT '创建者',
+      `create_time`        DATETIME DEFAULT NULL COMMENT '创建时间',
+      `update_by`          VARCHAR(64) DEFAULT '' COMMENT '更新者',
+      `update_time`        DATETIME DEFAULT NULL COMMENT '更新时间',
+      `remark`             VARCHAR(500) DEFAULT NULL COMMENT '备注',
+      PRIMARY KEY (`chart_id`),
+      UNIQUE KEY `uk_patient_chart_hospital_record` (`hospital_dept_id`, `medical_record_no`) COMMENT '院区内病历号唯一',
+      KEY `idx_patient_chart_patient_id` (`patient_id`) COMMENT '患者主档索引',
+      KEY `idx_patient_chart_patient_hospital` (`patient_id`, `hospital_dept_id`) COMMENT '患者医院索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者医院病历映射表';
+
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+######## TABLE patient_chart end ########
 
 ################################################################
 ######## Table structure for table `patient_visit_info` ########
@@ -40,10 +74,13 @@ DROP TABLE IF EXISTS `patient_visit_info`;
 
 CREATE TABLE `patient_visit_info` (
       `visit_id`                  INT(11) NOT NULL AUTO_INCREMENT COMMENT '0.序号（主键）',
+      `patient_id`                BIGINT(20) DEFAULT NULL COMMENT '患者主档ID',
+      `chart_id`                  BIGINT(20) DEFAULT NULL COMMENT '病历映射ID',
       `name`                      VARCHAR(50) COMMENT '1、姓名',
       `gender`                    ENUM('男','女') COMMENT '2、性别',
       `birth_date`                DATE COMMENT '3、出生日期',
       `visit_time`                DATE COMMENT '4、就诊时间',
+      `fill_time`                 DATETIME DEFAULT NULL COMMENT '填表时间',
       `hospital`                  VARCHAR(100) COMMENT '5、就诊医院',
       `hospital_dept_id`          BIGINT(20) COMMENT '就诊医院所属部门ID',
       `medical_record_no`         VARCHAR(50) COMMENT '6、病历号',
@@ -72,12 +109,15 @@ CREATE TABLE `patient_visit_info` (
       `update_time`               DATETIME DEFAULT NULL COMMENT '更新时间',
       `remark`                    VARCHAR(500) DEFAULT NULL COMMENT '备注',
       PRIMARY KEY (`visit_id`),
-      UNIQUE KEY `uk_hospital_medical_record_no` (`hospital_dept_id`, `medical_record_no`) COMMENT '院区内病例号唯一',
+      UNIQUE KEY `uk_hospital_record_visit` (`hospital_dept_id`, `medical_record_no`, `visit_time`, `fill_time`) COMMENT '院区内同一病历号同日同填表时间唯一',
+      KEY `idx_patient_id` (`patient_id`) COMMENT '患者主档索引',
+      KEY `idx_chart_id` (`chart_id`) COMMENT '病历映射索引',
+      KEY `idx_fill_time` (`fill_time`) COMMENT '填表时间索引',
       KEY `idx_medical_record_no` (`medical_record_no`) COMMENT '病历号索引',
       KEY `idx_visit_time` (`visit_time`) COMMENT '就诊时间索引',
       KEY `idx_hospital_dept_id` (`hospital_dept_id`) COMMENT '就诊医院部门索引',
       KEY `idx_hospital` (`hospital`) COMMENT '医院名称索引'
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='鼻炎患者就诊信息主表（包含图片路径等扩展字段）';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='患者就诊记录表（保留患者基础信息快照与图片路径等扩展字段）';
 
 /*!40101 SET character_set_client = @saved_cs_client */;
 

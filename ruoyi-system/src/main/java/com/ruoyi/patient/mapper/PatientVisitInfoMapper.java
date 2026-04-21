@@ -44,12 +44,12 @@ public interface PatientVisitInfoMapper
     public int updatePatientVisitInfo(PatientVisitInfo patientVisitInfo);
 
     /**
-     * 按院区+病例号统计重复数量
+     * 按院区+病例号+就诊日期统计重复数量
      *
-     * @param patientVisitInfo 查询参数（hospitalDeptId, medicalRecordNo, visitId）
+     * @param patientVisitInfo 查询参数（hospitalDeptId, medicalRecordNo, visitTime, visitId）
      * @return 重复数量
      */
-    public int countMedicalRecordNoDuplicate(PatientVisitInfo patientVisitInfo);
+    public int countVisitDuplicate(PatientVisitInfo patientVisitInfo);
 
     /**
      * 删除鼻炎患者就诊信息主（包含文档中所有字段）

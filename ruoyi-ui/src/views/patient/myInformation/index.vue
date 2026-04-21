@@ -48,6 +48,9 @@
       <el-table-column label="就诊日期" prop="visitTime" width="120">
         <template slot-scope="scope">{{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}</template>
       </el-table-column>
+      <el-table-column label="填表时间" prop="fillTime" width="170">
+        <template slot-scope="scope">{{ parseTime(scope.row.fillTime) || '-' }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="220" align="center" class-name="small-padding fixed-width">
         <template slot-scope="scope">
           <el-button size="mini" type="text" @click="handleDetail(scope.row)">详情</el-button>
@@ -68,6 +71,7 @@
           </el-col>
           <el-col :span="12"><el-form-item label="出生日期" prop="birthDate"><el-date-picker v-model="form.birthDate" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="就诊日期" prop="visitTime"><el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" style="width: 100%" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="填表时间"><el-date-picker v-model="form.fillTime" type="datetime" value-format="yyyy-MM-dd HH:mm:ss" placeholder="不填则自动使用提交时间" style="width: 100%" /></el-form-item></el-col>
           <el-col :span="12">
             <el-form-item label="就诊医院" prop="hospitalDeptId">
               <el-select v-model="form.hospitalDeptId" clearable filterable placeholder="请选择就诊医院" style="width: 100%" @change="handleHospitalChange">
@@ -100,7 +104,7 @@
         <el-table-column label="失败原因" prop="reason" min-width="320" show-overflow-tooltip />
       </el-table>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="downloadImportFailures" :disabled="!importSummary.failureDetails.length">下载 CSV</el-button>
+        <el-button type="primary" @click="downloadImportFailures" :disabled="!importSummary.failureDetails.length">下载 Excel</el-button>
         <el-button @click="importResultOpen = false">关闭</el-button>
       </div>
     </el-dialog>
@@ -215,6 +219,7 @@ export default {
         gender: undefined,
         birthDate: undefined,
         visitTime: undefined,
+        fillTime: undefined,
         hospitalDeptId: undefined,
         hospital: undefined,
         medicalRecordNo: undefined,
@@ -327,21 +332,50 @@ export default {
     downloadImportFailures() {
       const rows = this.importSummary.failureDetails || []
       if (!rows.length) return
-      const header = ['rowNum', 'medicalRecordNo', 'reason']
-      const lines = [header.join(',')]
-      rows.forEach(item => {
-        const line = [item.rowNum, item.medicalRecordNo, item.reason]
-          .map(v => '"' + String(v === undefined || v === null ? '' : v).replace(/"/g, '""') + '"')
-          .join(',')
-        lines.push(line)
-      })
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const html = this.buildImportFailureExcel(rows)
+      const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `patient_import_failures_${Date.now()}.csv`
+      link.download = `patient_import_failures_${Date.now()}.xls`
       link.click()
       URL.revokeObjectURL(url)
+    },
+    buildImportFailureExcel(rows) {
+      const body = rows.map(item => `
+        <tr>
+          <td>${this.escapeExcelText(item.rowNum)}</td>
+          <td>${this.escapeExcelText(item.medicalRecordNo)}</td>
+          <td>${this.escapeExcelText(item.reason)}</td>
+        </tr>
+      `).join('')
+      return `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="UTF-8" />
+          </head>
+          <body>
+            <table border="1">
+              <tr>
+                <th>行号</th>
+                <th>病历号</th>
+                <th>失败原因</th>
+              </tr>
+              ${body}
+            </table>
+          </body>
+        </html>
+      `
+    },
+    escapeExcelText(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/\r?\n/g, '<br/>')
     }
   }
 }

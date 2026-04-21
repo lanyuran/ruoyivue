@@ -43,7 +43,7 @@ public class SysRegisterService
 
     private static final String REGISTER_ROLE_DOCTOR = "doctor";
     private static final String ROLE_KEY_USER = "user";
-    private static final String ROLE_KEY_DOCTOR = "dept_doctor";
+    private static final String ROLE_KEY_DOCTOR = "doctor";
     private static final String APPLY_STATUS_PENDING = "0";
     private static final String APPLY_STATUS_APPROVED = "1";
     private static final String MOBILE_REGEX = "^1[3-9]\\d{9}$";

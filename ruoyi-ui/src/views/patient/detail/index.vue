@@ -30,6 +30,7 @@
         <div class="paper-meta">
           <div>就诊医院：{{ detail.hospital || '-' }}</div>
           <div>就诊日期：{{ formatDate(detail.visitTime) }}</div>
+          <div>填表时间：{{ formatDateTime(detail.fillTime) }}</div>
         </div>
       </div>
 
@@ -41,6 +42,7 @@
           <div class="doc-item"><span class="label">出生日期</span><span class="value">{{ formatDate(detail.birthDate) }}</span></div>
           <div class="doc-item"><span class="label">联系电话</span><span class="value">{{ detail.phone || '-' }}</span></div>
           <div class="doc-item"><span class="label">监护人姓名</span><span class="value">{{ detail.parentName || '-' }}</span></div>
+          <div class="doc-item"><span class="label">填表时间</span><span class="value">{{ formatDateTime(detail.fillTime) }}</span></div>
           <div class="doc-item"><span class="label">录入账号</span><span class="value">{{ detail.createBy || '-' }}</span></div>
         </div>
       </section>
@@ -49,7 +51,7 @@
         <div class="section-title">二、病情记录</div>
         <div class="doc-block"><span class="label">既往用药</span><div class="value multiline">{{ detail.pastMedication || '-' }}</div></div>
         <div class="doc-block"><span class="label">主诉</span><div class="value multiline">{{ detail.chiefComplaint || '-' }}</div></div>
-        <div class="doc-block"><span class="label">主症</span><div class="value multiline">{{ detail.mainSymptom || '-' }}</div></div>
+        <div class="doc-block"><span class="label">主证</span><div class="value multiline">{{ detail.mainSymptom || '-' }}</div></div>
         <div class="doc-block"><span class="label">共患疾病</span><div class="value multiline">{{ detail.comorbidity || '-' }}</div></div>
         <div class="doc-block"><span class="label">体格检查</span><div class="value multiline">{{ detail.physicalExam || '-' }}</div></div>
         <div class="doc-block"><span class="label">舌脉</span><div class="value multiline">{{ detail.tonguePulse || '-' }}</div></div>
@@ -65,7 +67,7 @@
           <div v-for="item in imageGroups" :key="item.key" class="image-card">
             <div class="image-label">{{ item.label }}</div>
             <img v-if="item.src" :src="item.src" :alt="item.label">
-            <div v-else class="image-empty">未上传</div>
+            <div v-else class="image-empty">无</div>
           </div>
         </div>
       </section>
@@ -140,6 +142,9 @@ export default {
     },
     formatDate(value) {
       return value ? this.parseTime(value, '{y}-{m}-{d}') : '-'
+    },
+    formatDateTime(value) {
+      return value ? this.parseTime(value) : '-'
     },
     handlePrint() {
       window.print()

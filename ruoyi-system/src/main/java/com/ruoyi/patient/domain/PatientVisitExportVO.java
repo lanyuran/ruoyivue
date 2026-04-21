@@ -20,6 +20,9 @@ public class PatientVisitExportVO{
     @Excel(name="就诊时间")
     private Date visitTime;
 
+    @Excel(name="填表时间", dateFormat = "yyyy-MM-dd HH:mm:ss")
+    private Date fillTime;
+
     @Excel(name="就诊医院名称")
     private String hospital;
 
@@ -96,6 +99,14 @@ public class PatientVisitExportVO{
 
     public void setVisitTime(Date visitTime){
         this.visitTime=visitTime;
+    }
+
+    public Date getFillTime(){
+        return fillTime;
+    }
+
+    public void setFillTime(Date fillTime){
+        this.fillTime=fillTime;
     }
 
     public String getHospital(){

@@ -33,6 +33,7 @@ import org.apache.poi.xssf.usermodel.XSSFShape;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -77,7 +78,6 @@ import com.ruoyi.system.service.ISysUserService;
 public class PatientVisitInfoController extends BaseController
 {
     private static final DateTimeFormatter IMAGE_DIR_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-    private static final DateTimeFormatter MOBILE_RECORD_NO_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final String MOBILE_SUBMIT_TOKEN_PREFIX = "patient:mobile:submit:";
     private static final int MOBILE_SUBMIT_TOKEN_EXPIRE_MINUTES = 30;
     private static final String MOBILE_VIEW_TOKEN_PREFIX = "patient:mobile:view:";
@@ -114,11 +114,8 @@ public class PatientVisitInfoController extends BaseController
     private SysRoleMapper roleMapper;
 
     private static final String ROLE_KEY_PATIENT = "user";
-    private static final String ROLE_KEY_DEPT_DOCTOR = "dept_doctor";
-
-    private static final String ROLE_KEY_DEPT_MANAGER = "dept_manager";
-
-    private static final String ROLE_KEY_CAMPUS_MANAGER = "campus_manager";
+    private static final String ROLE_KEY_DOCTOR = "doctor";
+    private static final String ROLE_KEY_MANAGER = "manager";
 
     /**
      * 查询鼻炎患者就诊信息主（包含文档中所有字段）列表
@@ -181,6 +178,8 @@ public class PatientVisitInfoController extends BaseController
             }
             try
             {
+                normalizeImportPhone(info);
+                ensureImportPatientAccount(info);
                 info.setCreateBy(getUsername());
                 successCount += patientVisitInfoService.insertPatientVisitInfo(info);
             }
@@ -243,6 +242,7 @@ public class PatientVisitInfoController extends BaseController
             vo.setGender(p.getGender());
             vo.setBirthDate(p.getBirthDate());
             vo.setVisitTime(p.getVisitTime());
+            vo.setFillTime(p.getFillTime());
             vo.setHospital(p.getHospital());
             vo.setMedicalRecordNo(p.getMedicalRecordNo());
             vo.setParentName(p.getParentName());
@@ -354,16 +354,13 @@ public class PatientVisitInfoController extends BaseController
      * 移动端提交（包含幂等 token 校验）
      */
     @Log(title = "移动端患者就诊信息提交", businessType = BusinessType.INSERT)
+    @Transactional(rollbackFor = Exception.class)
     @PostMapping("/mobile/submit")
     public AjaxResult mobileSubmit(@RequestBody PatientVisitInfo patientVisitInfo)
     {
         validatePublicMobileSubmit(patientVisitInfo);
         consumePublicMobileSubmitToken(patientVisitInfo.getRequestToken());
         patientVisitInfo.setPhone(StringUtils.trim(patientVisitInfo.getPhone()));
-        if (StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getMedicalRecordNo())))
-        {
-            patientVisitInfo.setMedicalRecordNo(generateMedicalRecordNo(patientVisitInfo.getPhone()));
-        }
         if (patientVisitInfo.getHospitalDeptId() != null && StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getHospital())))
         {
             SysDept hospitalDept = deptService.selectDeptById(patientVisitInfo.getHospitalDeptId());
@@ -442,16 +439,12 @@ public class PatientVisitInfoController extends BaseController
         {
             return;
         }
-        if (hasRole(user, ROLE_KEY_CAMPUS_MANAGER))
-        {
-            return;
-        }
-        if (hasRole(user, ROLE_KEY_DEPT_MANAGER))
+        if (hasRole(user, ROLE_KEY_MANAGER))
         {
             return;
         }
         PatientVisitInfo info = list.get(0);
-        if (hasRole(user, ROLE_KEY_DEPT_DOCTOR) && !StringUtils.equals(info.getCreateBy(), user.getUserName()))
+        if (hasRole(user, ROLE_KEY_DOCTOR) && !StringUtils.equals(info.getCreateBy(), user.getUserName()))
         {
             throw new ServiceException("只能修改本人录入的数据");
         }
@@ -893,6 +886,29 @@ public class PatientVisitInfoController extends BaseController
         }
     }
 
+    private void normalizeImportPhone(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            return;
+        }
+        patientVisitInfo.setPhone(StringUtils.trim(patientVisitInfo.getPhone()));
+    }
+
+    private void ensureImportPatientAccount(PatientVisitInfo patientVisitInfo)
+    {
+        String phone = patientVisitInfo == null ? null : StringUtils.trim(patientVisitInfo.getPhone());
+        if (StringUtils.isEmpty(phone))
+        {
+            throw new ServiceException("联系电话不能为空，无法自动创建账号");
+        }
+        if (!phone.matches("^1[3-9]\\d{9}$"))
+        {
+            throw new ServiceException("联系电话格式不正确，无法自动创建账号");
+        }
+        ensurePatientAccount(patientVisitInfo);
+    }
+
     private void consumePublicMobileSubmitToken(String requestToken)
     {
         String token = StringUtils.trim(requestToken);
@@ -927,12 +943,6 @@ public class PatientVisitInfoController extends BaseController
         {
             throw new ServiceException("查看链接无效或已过期，请重新提交后查看");
         }
-    }
-
-    private String generateMedicalRecordNo(String phone)
-    {
-        String suffix = StringUtils.isEmpty(phone) || phone.length() < 4 ? "0000" : phone.substring(phone.length() - 4);
-        return "P" + MOBILE_RECORD_NO_FORMATTER.format(LocalDateTime.now()) + suffix;
     }
 
     private PatientAccountResult ensurePatientAccount(PatientVisitInfo patientVisitInfo)

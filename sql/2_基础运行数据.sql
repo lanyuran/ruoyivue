@@ -1,5 +1,5 @@
 -- 用途: 基础运行数据（系统/权限/菜单/角色/字典/Quartz 等）
--- 用途: 若依基础库结构与初始数据（基线版本 2025-05-22）
+-- 用途: 若依基础库结构与初始数据（最终初始化口径）
 USE fl;
 SET NAMES utf8mb4 COLLATE utf8mb4_general_ci;
 ALTER DATABASE fl CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -66,7 +66,8 @@ create table sys_user (
   apply_role_key    varchar(100)    default null               comment '申请角色权限标识',
   apply_status      char(1)         default null               comment '申请状态(0待审批 1通过 2驳回)',
   remark            varchar(500)    default null               comment '备注',
-  primary key (user_id)
+  primary key (user_id),
+  unique key uk_sys_user_user_name (user_name)
 ) engine=innodb auto_increment=100 comment = '用户信息表';
 
 -- ----------------------------
@@ -124,7 +125,8 @@ create table sys_role (
   update_by            varchar(64)     default ''                 comment '更新者',
   update_time          datetime                                   comment '更新时间',
   remark               varchar(500)    default null               comment '备注',
-  primary key (role_id)
+  primary key (role_id),
+  unique key uk_sys_role_role_key (role_key)
 ) engine=innodb auto_increment=100 comment = '角色信息表';
 
 -- ----------------------------
@@ -670,34 +672,30 @@ INSERT INTO sys_role (
   role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
   status, del_flag, create_by, create_time, remark
 )
-SELECT '科室医生级', 'dept_doctor', 20, '3', 1, 1, '0', '0', 'admin', sysdate(), '科室医生级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'dept_doctor');
+SELECT '医生级', 'doctor', 20, '3', 1, 1, '0', '0', 'admin', sysdate(), '医生级'
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'doctor');
 
 INSERT INTO sys_role (
   role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
   status, del_flag, create_by, create_time, remark
 )
-SELECT '科室主管级', 'dept_manager', 30, '4', 1, 1, '0', '0', 'admin', sysdate(), '科室主管级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'dept_manager');
-
-INSERT INTO sys_role (
-  role_name, role_key, role_sort, data_scope, menu_check_strictly, dept_check_strictly,
-  status, del_flag, create_by, create_time, remark
-)
-SELECT '院区主管级', 'campus_manager', 40, '1', 1, 1, '0', '0', 'admin', sysdate(), '院区主管级'
-WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'campus_manager');
+SELECT '主管级', 'manager', 30, '1', 1, 1, '0', '0', 'admin', sysdate(), '主管级'
+WHERE NOT EXISTS (SELECT 1 FROM sys_role WHERE role_key = 'manager');
 
 UPDATE sys_role
 SET data_scope = '1'
-WHERE role_key = 'campus_manager';
+WHERE role_key = 'manager';
 
 -- Menu access: 用户级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'user' AND m.menu_name = '数据上传';
+WHERE r.role_key = 'user' AND m.menu_name = '数据上传'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
 WHERE r.role_key = 'user'
@@ -706,71 +704,55 @@ WHERE r.role_key = 'user'
     'patient:information:add',
     'patient:information:edit',
     'patient:information:query'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
 -- Menu access: 科室医生级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_doctor' AND m.menu_name IN ('数据上传', '数据查询');
+WHERE r.role_key = 'doctor' AND m.menu_name IN ('数据上传', '数据查询')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_doctor'
+WHERE r.role_key = 'doctor'
   AND m.perms IN (
     'patient:information:list',
     'patient:information:add',
     'patient:information:edit',
     'patient:information:query'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Menu access: 科室主管级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+-- Menu access: 主管级
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager' AND m.menu_name = '系统管理';
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理');
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'dept_manager'
-  AND m.perms IN (
-    'patient:information:list',
-    'patient:information:add',
-    'patient:information:edit',
-    'patient:information:query',
-    'system:user:list',
-    'system:user:query',
-    'system:user:add',
-    'system:user:edit',
-    'system:user:remove',
-    'system:user:resetPwd',
-    'system:user:import',
-    'system:user:export',
-    'system:user:approveDoctor'
+WHERE r.role_key = 'manager' AND m.menu_name = '系统管理'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Menu access: 院区主管级
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager' AND m.menu_name = '系统管理';
+WHERE r.role_key = 'manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理', '医院管理')
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager' AND m.menu_name IN ('数据上传', '数据查询', '用户管理', '医院管理');
-
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
-SELECT r.role_id, m.menu_id
-FROM sys_role r, sys_menu m
-WHERE r.role_key = 'campus_manager'
+WHERE r.role_key = 'manager'
   AND m.perms IN (
     'patient:information:list',
     'patient:information:add',
@@ -790,19 +772,28 @@ WHERE r.role_key = 'campus_manager'
     'system:dept:add',
     'system:dept:edit',
     'system:dept:remove'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
   );
 
--- Ensure System Management menu is bound to dept_manager + campus_manager
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+-- Ensure System Management menu is bound to manager
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT role_id, 1
-FROM sys_role
-WHERE role_key IN ('dept_manager','campus_manager');
+FROM sys_role r
+WHERE role_key = 'manager'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = 1
+  );
 
 -- Menu access: 管理员级（全部菜单与权限）
-INSERT IGNORE INTO sys_role_menu (role_id, menu_id)
+INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.role_id, m.menu_id
 FROM sys_role r, sys_menu m
-WHERE r.role_key = 'admin';
+WHERE r.role_key = 'admin'
+  AND NOT EXISTS (
+    SELECT 1 FROM sys_role_menu rm WHERE rm.role_id = r.role_id AND rm.menu_id = m.menu_id
+  );
 
 -- ============================================
 -- Quartz 调度表

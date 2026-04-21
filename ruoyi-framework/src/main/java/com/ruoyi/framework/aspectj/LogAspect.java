@@ -86,8 +86,8 @@ public class LogAspect
     {
         try
         {
-            // 获取当前的用户
-            LoginUser loginUser = SecurityUtils.getLoginUser();
+            // 公开接口没有登录态，操作日志应允许匿名访问。
+            LoginUser loginUser = getLoginUserOrNull();
 
             // *========数据库日志=========*//
             SysOperLog operLog = new SysOperLog();
@@ -133,6 +133,18 @@ public class LogAspect
         finally
         {
             TIME_THREADLOCAL.remove();
+        }
+    }
+
+    private LoginUser getLoginUserOrNull()
+    {
+        try
+        {
+            return SecurityUtils.getLoginUser();
+        }
+        catch (Exception e)
+        {
+            return null;
         }
     }
 

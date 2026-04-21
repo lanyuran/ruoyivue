@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import com.ruoyi.common.annotation.Excel;
+import com.ruoyi.common.annotation.Excels;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
@@ -19,6 +20,12 @@ public class PatientVisitInfo extends BaseEntity
 
     /** 0.序号（主键） */
     private Long visitId;
+
+    /** 患者主档ID */
+    private Long patientId;
+
+    /** 患者病历映射ID */
+    private Long chartId;
 
     /** 1、姓名 */
     @Excel(name = "1、姓名")
@@ -37,6 +44,14 @@ public class PatientVisitInfo extends BaseEntity
     @JsonFormat(pattern = "yyyy-MM-dd")
     @Excel(name = "4、就诊时间", width = 30, dateFormat = "yyyy-MM-dd")
     private Date visitTime;
+
+    /** 填表时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Excels({
+        @Excel(name = "填表时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss", type = Excel.Type.EXPORT),
+        @Excel(name = "提交答卷时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss", type = Excel.Type.IMPORT)
+    })
+    private Date fillTime;
 
     /** 5、就诊医院 */
     @Excel(name = "5、就诊医院")
@@ -138,6 +153,26 @@ public class PatientVisitInfo extends BaseEntity
         return visitId;
     }
 
+    public Long getPatientId()
+    {
+        return patientId;
+    }
+
+    public void setPatientId(Long patientId)
+    {
+        this.patientId = patientId;
+    }
+
+    public Long getChartId()
+    {
+        return chartId;
+    }
+
+    public void setChartId(Long chartId)
+    {
+        this.chartId = chartId;
+    }
+
     public void setName(String name)
     {
         this.name = name;
@@ -176,6 +211,16 @@ public class PatientVisitInfo extends BaseEntity
     public Date getVisitTime()
     {
         return visitTime;
+    }
+
+    public Date getFillTime()
+    {
+        return fillTime;
+    }
+
+    public void setFillTime(Date fillTime)
+    {
+        this.fillTime = fillTime;
     }
 
     public void setHospital(String hospital)
@@ -412,10 +457,13 @@ public class PatientVisitInfo extends BaseEntity
     public String toString() {
         return new ToStringBuilder(this,ToStringStyle.MULTI_LINE_STYLE)
                 .append("visitId", getVisitId())
+                .append("patientId", getPatientId())
+                .append("chartId", getChartId())
                 .append("name", getName())
                 .append("gender", getGender())
                 .append("birthDate", getBirthDate())
                 .append("visitTime", getVisitTime())
+                .append("fillTime", getFillTime())
                 .append("hospital", getHospital())
                 .append("hospitalDeptId", getHospitalDeptId())
                 .append("medicalRecordNo", getMedicalRecordNo())
