@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.patient.mapper.PatientChartMapper">
+
+    <resultMap type="PatientChart" id="PatientChartResult">
+        <result property="chartId" column="chart_id"/>
+        <result property="patientId" column="patient_id"/>
+        <result property="hospitalDeptId" column="hospital_dept_id"/>
+        <result property="hospital" column="hospital"/>
+        <result property="medicalRecordNo" column="medical_record_no"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectPatientChartByChartId" parameterType="Long" resultMap="PatientChartResult">
+        select chart_id, patient_id, hospital_dept_id, hospital, medical_record_no, create_by, create_time, update_by, update_time, remark
+        from patient_chart
+        where chart_id = #{chartId}
+    </select>
+
+    <select id="selectPatientChartByHospitalRecord" parameterType="PatientChart" resultMap="PatientChartResult">
+        select chart_id, patient_id, hospital_dept_id, hospital, medical_record_no, create_by, create_time, update_by, update_time, remark
+        from patient_chart
+        where hospital_dept_id = #{hospitalDeptId}
+          and medical_record_no = #{medicalRecordNo}
+        limit 1
+    </select>
+
+    <select id="selectPatientChartByPatientHospital" parameterType="PatientChart" resultMap="PatientChartResult">
+        select chart_id, patient_id, hospital_dept_id, hospital, medical_record_no, create_by, create_time, update_by, update_time, remark
+        from patient_chart
+        where patient_id = #{patientId}
+          and hospital_dept_id = #{hospitalDeptId}
+        order by chart_id asc
+        limit 1
+    </select>
+
+    <insert id="insertPatientChart" parameterType="PatientChart" useGeneratedKeys="true" keyProperty="chartId">
+        insert into patient_chart
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="patientId != null">patient_id,</if>
+            <if test="hospitalDeptId != null">hospital_dept_id,</if>
+            <if test="hospital != null and hospital != ''">hospital,</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="patientId != null">#{patientId},</if>
+            <if test="hospitalDeptId != null">#{hospitalDeptId},</if>
+            <if test="hospital != null and hospital != ''">#{hospital},</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">#{medicalRecordNo},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updatePatientChart" parameterType="PatientChart">
+        update patient_chart
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="patientId != null">patient_id = #{patientId},</if>
+            <if test="hospitalDeptId != null">hospital_dept_id = #{hospitalDeptId},</if>
+            <if test="hospital != null and hospital != ''">hospital = #{hospital},</if>
+            <if test="medicalRecordNo != null and medicalRecordNo != ''">medical_record_no = #{medicalRecordNo},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where chart_id = #{chartId}
+    </update>
+</mapper>

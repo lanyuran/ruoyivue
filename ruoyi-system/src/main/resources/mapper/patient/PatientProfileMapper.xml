@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.patient.mapper.PatientProfileMapper">
+
+    <resultMap type="PatientProfile" id="PatientProfileResult">
+        <result property="patientId" column="patient_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="birthDate" column="birth_date"/>
+        <result property="parentName" column="parent_name"/>
+        <result property="phone" column="phone"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="remark" column="remark"/>
+    </resultMap>
+
+    <select id="selectPatientProfileByPatientId" parameterType="Long" resultMap="PatientProfileResult">
+        select patient_id, user_id, name, gender, birth_date, parent_name, phone, create_by, create_time, update_by, update_time, remark
+        from patient_profile
+        where patient_id = #{patientId}
+    </select>
+
+    <select id="selectPatientProfileByUserId" parameterType="Long" resultMap="PatientProfileResult">
+        select patient_id, user_id, name, gender, birth_date, parent_name, phone, create_by, create_time, update_by, update_time, remark
+        from patient_profile
+        where user_id = #{userId}
+        limit 1
+    </select>
+
+    <select id="selectPatientProfileByIdentity" parameterType="PatientProfile" resultMap="PatientProfileResult">
+        select patient_id, user_id, name, gender, birth_date, parent_name, phone, create_by, create_time, update_by, update_time, remark
+        from patient_profile
+        where name = #{name}
+          and birth_date = #{birthDate}
+          and phone = #{phone}
+        <if test="parentName != null and parentName != ''">
+          and parent_name = #{parentName}
+        </if>
+        limit 1
+    </select>
+
+    <insert id="insertPatientProfile" parameterType="PatientProfile" useGeneratedKeys="true" keyProperty="patientId">
+        insert into patient_profile
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="name != null and name != ''">name,</if>
+            <if test="gender != null and gender != ''">gender,</if>
+            <if test="birthDate != null">birth_date,</if>
+            <if test="parentName != null">parent_name,</if>
+            <if test="phone != null and phone != ''">phone,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="name != null and name != ''">#{name},</if>
+            <if test="gender != null and gender != ''">#{gender},</if>
+            <if test="birthDate != null">#{birthDate},</if>
+            <if test="parentName != null">#{parentName},</if>
+            <if test="phone != null and phone != ''">#{phone},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updatePatientProfile" parameterType="PatientProfile">
+        update patient_profile
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="name != null and name != ''">name = #{name},</if>
+            <if test="gender != null and gender != ''">gender = #{gender},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="parentName != null">parent_name = #{parentName},</if>
+            <if test="phone != null and phone != ''">phone = #{phone},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where patient_id = #{patientId}
+    </update>
+</mapper>
