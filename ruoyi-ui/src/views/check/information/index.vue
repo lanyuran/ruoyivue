@@ -136,6 +136,12 @@
       @pagination="getList"
     />
 
+    <visit-edit-dialog
+      :visible.sync="editOpen"
+      :visit-id="editingVisitId"
+      @success="getList"
+    />
+
     <!-- 详细信息对话框 -->
     <el-dialog :title="title" :visible.sync="open" width="600px" append-to-body>
       <el-form ref="form" :model="form" :rules="rules" label-width="130px">
@@ -430,9 +436,13 @@
 
 <script>
 import { listInformation, getInformation, delInformation, updateInformation, listHospitalOptions } from "@/api/patient/information"
+import VisitEditDialog from "@/views/patient/components/VisitEditDialog"
 
 export default {
   name: "Information",
+  components: {
+    VisitEditDialog
+  },
   data() {
     return {
       loading: true,
@@ -448,6 +458,8 @@ export default {
       title: "",
       // 是否显示弹出层
       open: false,
+      editOpen: false,
+      editingVisitId: null,
       isReadonly: false,
       queryParams: {
         pageNum: 1,
@@ -601,7 +613,6 @@ export default {
     },
     /** 修改按钮操作 */
     handleUpdate(row) {
-      this.reset()
       let visitId = row && row.visitId ? row.visitId : null
       if (!visitId && this.ids.length === 1) {
         visitId = this.ids[0]
@@ -610,18 +621,8 @@ export default {
         this.$modal.alertWarning("请至少选择一条记录")
         return
       }
-      getInformation(visitId).then(response => {
-        this.form = response.data
-        this.open = true
-        this.title = "修改鼻炎患者就诊信息主（包含文档中所有字段）"
-        this.initImageLists()
-        this.loadHospitalOptions().finally(() => {
-          this.syncHospitalSelection()
-        })
-        this.$nextTick(() => {
-          this.setFormReadonly(false)
-        })
-      })
+      this.editingVisitId = visitId
+      this.editOpen = true
     },
     /** 提交按钮 */
     submitForm() {
