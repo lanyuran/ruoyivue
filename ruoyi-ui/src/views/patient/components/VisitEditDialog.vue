@@ -127,10 +127,14 @@
       </el-form-item>
 
       <el-form-item label="中医诊断" prop="tcmDiagnosis">
-        <el-input v-model="form.tcmDiagnosis" />
+        <el-radio-group v-model="form.tcmDiagnosis" class="choice-stack">
+          <el-radio v-for="item in tcmDiagnosisOptions" :key="item" :label="item">{{ item }}</el-radio>
+        </el-radio-group>
       </el-form-item>
       <el-form-item label="中医治法" prop="tcmTreatment">
-        <el-input v-model="form.tcmTreatment" />
+        <el-radio-group v-model="form.tcmTreatment" class="choice-stack">
+          <el-radio v-for="item in tcmTreatmentOptions" :key="item" :label="item">{{ item }}</el-radio>
+        </el-radio-group>
       </el-form-item>
       <el-form-item label="中药处方照片">
         <image-upload-card :file-list.sync="tcmTreatmentImageList" @success="res => handleUploadSuccess(res, 'tcmTreatmentImagePath')" @remove="() => handleRemove('tcmTreatmentImagePath')" />
@@ -171,6 +175,8 @@ export default {
       saving: false,
       hospitalOptions: [],
       hospitalOther: '',
+      tcmDiagnosisOptions: ['鼻鼽 风寒犯肺证', '鼻鼽 风热犯肺证', '鼻鼽 肺脾气虚证', '鼻鼽 肺肾阳虚证'],
+      tcmTreatmentOptions: ['疏风散寒 宣通鼻窍', '疏风清热 宣通鼻窍', '补脾益肺 通窍散结', '温补肺肾 通窍散结'],
       form: this.emptyForm(),
       rules: {
         name: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
@@ -186,8 +192,8 @@ export default {
         mainSymptom: [{ required: true, message: '请输入主证', trigger: 'blur' }],
         physicalExam: [{ required: true, message: '请输入体格检查', trigger: 'blur' }],
         tonguePulse: [{ required: true, message: '请输入舌脉情况', trigger: 'blur' }],
-        tcmDiagnosis: [{ required: true, message: '请输入中医诊断', trigger: 'blur' }],
-        tcmTreatment: [{ required: true, message: '请输入中医治法', trigger: 'blur' }],
+        tcmDiagnosis: [{ required: true, message: '请选择中医诊断', trigger: 'change' }],
+        tcmTreatment: [{ required: true, message: '请选择中医治法', trigger: 'change' }],
         tcmExternalPrescription: [{ required: true, message: '请输入中医外治处方', trigger: 'blur' }]
       },
       tongueImageList: [],
@@ -362,6 +368,13 @@ export default {
 </script>
 
 <style scoped>
+.choice-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.6;
+}
+
 ::v-deep .el-upload-list__item-status-label {
   display: none !important;
 }

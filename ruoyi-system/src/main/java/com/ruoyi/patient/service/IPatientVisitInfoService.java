@@ -1,6 +1,7 @@
 package com.ruoyi.patient.service;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.patient.domain.PatientVisitInfo;
 
 /**
@@ -26,6 +27,13 @@ public interface IPatientVisitInfoService
      * @return 鼻炎患者就诊信息主（包含文档中所有字段）集合
      */
     public List<PatientVisitInfo> selectPatientVisitInfoList(PatientVisitInfo patientVisitInfo);
+
+    /**
+     * 获取就诊医院选项
+     *
+     * @return 医院选项列表
+     */
+    public List<Map<String, Object>> listHospitalOptions();
 
     /**
      * 新增鼻炎患者就诊信息主（包含文档中所有字段）

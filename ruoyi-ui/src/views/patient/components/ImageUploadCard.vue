@@ -22,7 +22,7 @@
       :on-exceed="handleExceed"
     >
       <el-button size="mini" type="primary">{{ previewUrl ? '替换图片' : '上传图片' }}</el-button>
-      <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 2MB</div>
+      <div slot="tip" class="el-upload__tip">只能上传 jpg/png 文件，且不超过 10MB</div>
     </el-upload>
   </div>
 </template>
@@ -53,14 +53,14 @@ export default {
   methods: {
     beforeUpload(file) {
       const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
-      const isLt2M = file.size / 1024 / 1024 < 2
+      const isAllowedSize = file.size / 1024 / 1024 <= 10
       if (!isImage) {
         this.$message.error('上传图片只能是 JPG/PNG 格式')
       }
-      if (!isLt2M) {
-        this.$message.error('上传图片大小不能超过 2MB')
+      if (!isAllowedSize) {
+        this.$message.error('上传图片大小不能超过 10MB')
       }
-      return isImage && isLt2M
+      return isImage && isAllowedSize
     },
     handleExceed() {
       this.$message.warning('只能上传一张图片')

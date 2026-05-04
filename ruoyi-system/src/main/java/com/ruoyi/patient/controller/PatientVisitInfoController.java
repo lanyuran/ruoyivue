@@ -21,6 +21,7 @@ import org.apache.poi.hssf.usermodel.HSSFPicture;
 import org.apache.poi.hssf.usermodel.HSSFShape;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.PictureData;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -165,7 +166,10 @@ public class PatientVisitInfoController extends BaseController
         }
 
         fillMissingImageColumns(visitInfos, importContext);
+        fillChoiceColumns(visitInfos, importContext);
         int successCount = 0;
+        Long patientRoleId = resolveRoleId(ROLE_KEY_PATIENT);
+        Map<String, PatientAccountResult> importAccountCache = new HashMap<>();
         List<Map<String, Object>> failureDetails = new ArrayList<>();
         for (int i = 0; i < visitInfos.size(); i++)
         {
@@ -179,7 +183,8 @@ public class PatientVisitInfoController extends BaseController
             try
             {
                 normalizeImportPhone(info);
-                ensureImportPatientAccount(info);
+                normalizeImportHospital(info);
+                ensureImportPatientAccount(info, patientRoleId, importAccountCache);
                 info.setCreateBy(getUsername());
                 successCount += patientVisitInfoService.insertPatientVisitInfo(info);
             }
@@ -203,26 +208,7 @@ public class PatientVisitInfoController extends BaseController
     @GetMapping("/hospitalOptions")
     public AjaxResult hospitalOptions()
     {
-        SysDept dept = new SysDept();
-        dept.setStatus("0");
-        List<TreeSelect> deptTree = deptService.selectDeptTreeListPublic(dept);
-        TreeSelect hospitalRoot = findHospitalRootNode(deptTree);
-        List<Map<String, Object>> options = new ArrayList<>();
-        if (hospitalRoot != null && hospitalRoot.getChildren() != null)
-        {
-            for (TreeSelect child : hospitalRoot.getChildren())
-            {
-                if (child == null)
-                {
-                    continue;
-                }
-                Map<String, Object> option = new HashMap<>();
-                option.put("deptId", child.getId());
-                option.put("deptName", child.getLabel());
-                options.add(option);
-            }
-        }
-        return success(options);
+        return success(patientVisitInfoService.listHospitalOptions());
     }
 
     /**
@@ -508,9 +494,10 @@ public class PatientVisitInfoController extends BaseController
     {
         List<ExcelImageInfo> imageInfos = new ArrayList<>();
         List<Integer> dataRows = new ArrayList<>();
+        Map<Integer, ExcelChoiceInfo> choiceRows = new HashMap<>();
         if (fileBytes == null || fileBytes.length == 0)
         {
-            return new ExcelImportContext(imageInfos, dataRows);
+            return new ExcelImportContext(imageInfos, dataRows, choiceRows);
         }
         String importPath = "/import/" + IMAGE_DIR_FORMATTER.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().replace("-", "");
         String absolutePath = RuoYiConfig.getProfile() + importPath;
@@ -526,13 +513,14 @@ public class PatientVisitInfoController extends BaseController
             Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
             if (sheet == null)
             {
-                return new ExcelImportContext(imageInfos, dataRows);
+                return new ExcelImportContext(imageInfos, dataRows, choiceRows);
             }
             List<String> headers = readHeaderValues(sheet.getRow(0));
             collectDataRowIndexes(sheet, 0, dataRows);
+            collectChoiceRows(sheet, headers, dataRows, choiceRows);
             writeSheetPictures(workbook, sheet, headers, targetDir, relativeDir, imageInfos);
         }
-        return new ExcelImportContext(imageInfos, dataRows);
+        return new ExcelImportContext(imageInfos, dataRows, choiceRows);
     }
 
     private void fillMissingImageColumns(List<PatientVisitInfo> visitInfos, ExcelImportContext context)
@@ -563,6 +551,36 @@ public class PatientVisitInfoController extends BaseController
                 continue;
             }
             applyImageToEntity(target, imageInfo);
+        }
+    }
+
+    private void fillChoiceColumns(List<PatientVisitInfo> visitInfos, ExcelImportContext context)
+    {
+        if (visitInfos == null || visitInfos.isEmpty() || context == null || context.getChoiceRows().isEmpty())
+        {
+            return;
+        }
+        List<Integer> dataRowIndexes = context.getDataRowIndexes();
+        for (int i = 0; i < visitInfos.size() && i < dataRowIndexes.size(); i++)
+        {
+            PatientVisitInfo info = visitInfos.get(i);
+            ExcelChoiceInfo choiceInfo = context.getChoiceRows().get(dataRowIndexes.get(i));
+            if (info == null || choiceInfo == null)
+            {
+                continue;
+            }
+            if (StringUtils.isEmpty(StringUtils.trim(info.getMainSymptom())) && StringUtils.isNotEmpty(choiceInfo.getMainSymptom()))
+            {
+                info.setMainSymptom(choiceInfo.getMainSymptom());
+            }
+            if (StringUtils.isEmpty(StringUtils.trim(info.getComorbidity())) && StringUtils.isNotEmpty(choiceInfo.getComorbidity()))
+            {
+                info.setComorbidity(choiceInfo.getComorbidity());
+            }
+            if (StringUtils.isEmpty(StringUtils.trim(info.getPhysicalExam())) && StringUtils.isNotEmpty(choiceInfo.getPhysicalExam()))
+            {
+                info.setPhysicalExam(choiceInfo.getPhysicalExam());
+            }
         }
     }
 
@@ -603,6 +621,117 @@ public class PatientVisitInfoController extends BaseController
             headers.add(cell == null ? null : cell.toString());
         }
         return headers;
+    }
+
+    private void collectChoiceRows(Sheet sheet, List<String> headers, List<Integer> dataRows, Map<Integer, ExcelChoiceInfo> choiceRows)
+    {
+        if (sheet == null || headers == null || dataRows == null || choiceRows == null)
+        {
+            return;
+        }
+        DataFormatter formatter = new DataFormatter();
+        for (Integer rowIndex : dataRows)
+        {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null)
+            {
+                continue;
+            }
+            ExcelChoiceInfo choiceInfo = new ExcelChoiceInfo();
+            for (int columnIndex = 0; columnIndex < headers.size(); columnIndex++)
+            {
+                ChoiceColumn choiceColumn = parseChoiceColumn(headers.get(columnIndex));
+                if (choiceColumn == null || !isYesCell(row.getCell(columnIndex), formatter))
+                {
+                    continue;
+                }
+                choiceInfo.add(choiceColumn.getGroup(), choiceColumn.getOption());
+            }
+            choiceInfo.finish();
+            if (!choiceInfo.isEmpty())
+            {
+                choiceRows.put(rowIndex, choiceInfo);
+            }
+        }
+    }
+
+    private ChoiceColumn parseChoiceColumn(String rawHeader)
+    {
+        String header = normalizeHeader(rawHeader);
+        if (StringUtils.isEmpty(header))
+        {
+            return null;
+        }
+        String option = extractChoiceOption(header);
+        if (StringUtils.isEmpty(option))
+        {
+            return null;
+        }
+        if (header.startsWith("11、"))
+        {
+            return new ChoiceColumn("mainSymptom", option);
+        }
+        if (header.startsWith("12、"))
+        {
+            return new ChoiceColumn("comorbidity", option);
+        }
+        if (header.startsWith("13、"))
+        {
+            return new ChoiceColumn("physicalExam", option);
+        }
+        return null;
+    }
+
+    private String extractChoiceOption(String header)
+    {
+        int start = header.indexOf('(');
+        int end = header.lastIndexOf(')');
+        if (start < 0 || end <= start)
+        {
+            start = header.indexOf('（');
+            end = header.lastIndexOf('）');
+        }
+        if (start < 0 || end <= start)
+        {
+            return null;
+        }
+        return StringUtils.trim(header.substring(start + 1, end));
+    }
+
+    private String normalizeHeader(String header)
+    {
+        if (header == null)
+        {
+            return null;
+        }
+        return header.replace(" ", "").replace("　", "").replace("\n", "").replace("\r", "");
+    }
+
+    private boolean isYesCell(Cell cell, DataFormatter formatter)
+    {
+        if (cell == null)
+        {
+            return false;
+        }
+        String value = formatter.formatCellValue(cell);
+        if (StringUtils.isEmpty(value))
+        {
+            value = cell.toString();
+        }
+        value = StringUtils.trim(value);
+        if (StringUtils.isEmpty(value))
+        {
+            return false;
+        }
+        value = value.replace(" ", "");
+        return "1".equals(value)
+            || "1.0".equals(value)
+            || "是".equals(value)
+            || "Y".equalsIgnoreCase(value)
+            || "YES".equalsIgnoreCase(value)
+            || "TRUE".equalsIgnoreCase(value)
+            || "√".equals(value)
+            || "✓".equals(value);
     }
 
     private void collectDataRowIndexes(Sheet sheet, int headerRowIndex, List<Integer> rowIndexes)
@@ -863,7 +992,8 @@ public class PatientVisitInfoController extends BaseController
         {
             throw new ServiceException("就诊日期不能为空");
         }
-        if (patientVisitInfo.getHospitalDeptId() == null)
+        if (patientVisitInfo.getHospitalDeptId() == null
+            && StringUtils.isEmpty(StringUtils.trim(patientVisitInfo.getHospital())))
         {
             throw new ServiceException("请选择就诊医院");
         }
@@ -895,7 +1025,21 @@ public class PatientVisitInfoController extends BaseController
         patientVisitInfo.setPhone(StringUtils.trim(patientVisitInfo.getPhone()));
     }
 
-    private void ensureImportPatientAccount(PatientVisitInfo patientVisitInfo)
+    private void normalizeImportHospital(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            return;
+        }
+        String hospital = StringUtils.trim(patientVisitInfo.getHospital());
+        if (StringUtils.isEmpty(hospital) && patientVisitInfo.getHospitalDeptId() == null)
+        {
+            patientVisitInfo.setHospital("其他医院");
+        }
+    }
+
+    private void ensureImportPatientAccount(PatientVisitInfo patientVisitInfo, Long patientRoleId,
+        Map<String, PatientAccountResult> importAccountCache)
     {
         String phone = patientVisitInfo == null ? null : StringUtils.trim(patientVisitInfo.getPhone());
         if (StringUtils.isEmpty(phone))
@@ -906,7 +1050,7 @@ public class PatientVisitInfoController extends BaseController
         {
             throw new ServiceException("联系电话格式不正确，无法自动创建账号");
         }
-        ensurePatientAccount(patientVisitInfo);
+        ensurePatientAccount(patientVisitInfo, patientRoleId, importAccountCache, false);
     }
 
     private void consumePublicMobileSubmitToken(String requestToken)
@@ -947,11 +1091,25 @@ public class PatientVisitInfoController extends BaseController
 
     private PatientAccountResult ensurePatientAccount(PatientVisitInfo patientVisitInfo)
     {
-        String phone = StringUtils.trim(patientVisitInfo.getPhone());
         Long patientRoleId = resolveRoleId(ROLE_KEY_PATIENT);
+        return ensurePatientAccount(patientVisitInfo, patientRoleId, null, true);
+    }
+
+    private PatientAccountResult ensurePatientAccount(PatientVisitInfo patientVisitInfo, Long patientRoleId,
+        Map<String, PatientAccountResult> accountCache, boolean resetExistingPassword)
+    {
+        String phone = StringUtils.trim(patientVisitInfo.getPhone());
         if (patientRoleId == null)
         {
             throw new ServiceException("患者角色未配置，请联系管理员");
+        }
+        if (accountCache != null)
+        {
+            PatientAccountResult cached = accountCache.get(phone);
+            if (cached != null)
+            {
+                return cached;
+            }
         }
         SysUser existingUser = userService.selectUserByUserName(phone);
         if (existingUser == null)
@@ -972,7 +1130,12 @@ public class PatientVisitInfoController extends BaseController
             {
                 throw new ServiceException("患者账号创建失败，请联系管理员");
             }
-            return new PatientAccountResult(phone, AUTO_PATIENT_PASSWORD, true);
+            PatientAccountResult createdResult = new PatientAccountResult(phone, AUTO_PATIENT_PASSWORD, true);
+            if (accountCache != null)
+            {
+                accountCache.put(phone, createdResult);
+            }
+            return createdResult;
         }
 
         List<SysRole> roles = roleMapper.selectRolesByUserName(phone);
@@ -994,8 +1157,16 @@ public class PatientVisitInfoController extends BaseController
         updateUser.setUpdateBy(MOBILE_ACCOUNT_CREATE_BY);
         updateUser.setRemark("患者填写后自动更新账号");
         userService.updateUserProfile(updateUser);
-        userService.resetUserPwd(existingUser.getUserId(), SecurityUtils.encryptPassword(AUTO_PATIENT_PASSWORD));
-        return new PatientAccountResult(phone, AUTO_PATIENT_PASSWORD, false);
+        if (resetExistingPassword)
+        {
+            userService.resetUserPwd(existingUser.getUserId(), SecurityUtils.encryptPassword(AUTO_PATIENT_PASSWORD));
+        }
+        PatientAccountResult existingResult = new PatientAccountResult(phone, resetExistingPassword ? AUTO_PATIENT_PASSWORD : null, false);
+        if (accountCache != null)
+        {
+            accountCache.put(phone, existingResult);
+        }
+        return existingResult;
     }
 
     private boolean hasNonPatientRole(List<SysRole> roles)
@@ -1033,11 +1204,13 @@ public class PatientVisitInfoController extends BaseController
     {
         private final List<ExcelImageInfo> imageInfos;
         private final List<Integer> dataRowIndexes;
+        private final Map<Integer, ExcelChoiceInfo> choiceRows;
 
-        private ExcelImportContext(List<ExcelImageInfo> imageInfos, List<Integer> dataRowIndexes)
+        private ExcelImportContext(List<ExcelImageInfo> imageInfos, List<Integer> dataRowIndexes, Map<Integer, ExcelChoiceInfo> choiceRows)
         {
             this.imageInfos = imageInfos;
             this.dataRowIndexes = dataRowIndexes;
+            this.choiceRows = choiceRows;
         }
 
         public List<ExcelImageInfo> getImageInfos()
@@ -1048,6 +1221,95 @@ public class PatientVisitInfoController extends BaseController
         public List<Integer> getDataRowIndexes()
         {
             return dataRowIndexes;
+        }
+
+        public Map<Integer, ExcelChoiceInfo> getChoiceRows()
+        {
+            return choiceRows;
+        }
+    }
+
+    private static final class ExcelChoiceInfo
+    {
+        private final List<String> mainSymptoms = new ArrayList<>();
+        private final List<String> comorbidities = new ArrayList<>();
+        private final List<String> physicalExams = new ArrayList<>();
+        private String mainSymptom;
+        private String comorbidity;
+        private String physicalExam;
+
+        public void add(String group, String option)
+        {
+            if (StringUtils.isEmpty(option))
+            {
+                return;
+            }
+            if ("mainSymptom".equals(group))
+            {
+                mainSymptoms.add(option);
+            }
+            else if ("comorbidity".equals(group))
+            {
+                comorbidities.add(option);
+            }
+            else if ("physicalExam".equals(group))
+            {
+                physicalExams.add(option);
+            }
+        }
+
+        public void finish()
+        {
+            mainSymptom = joinOrNull(mainSymptoms);
+            comorbidity = joinOrNull(comorbidities);
+            physicalExam = joinOrNull(physicalExams);
+        }
+
+        public boolean isEmpty()
+        {
+            return StringUtils.isEmpty(mainSymptom) && StringUtils.isEmpty(comorbidity) && StringUtils.isEmpty(physicalExam);
+        }
+
+        public String getMainSymptom()
+        {
+            return mainSymptom;
+        }
+
+        public String getComorbidity()
+        {
+            return comorbidity;
+        }
+
+        public String getPhysicalExam()
+        {
+            return physicalExam;
+        }
+
+        private String joinOrNull(List<String> values)
+        {
+            return values.isEmpty() ? null : String.join("，", values);
+        }
+    }
+
+    private static final class ChoiceColumn
+    {
+        private final String group;
+        private final String option;
+
+        private ChoiceColumn(String group, String option)
+        {
+            this.group = group;
+            this.option = option;
+        }
+
+        public String getGroup()
+        {
+            return group;
+        }
+
+        public String getOption()
+        {
+            return option;
         }
     }
 

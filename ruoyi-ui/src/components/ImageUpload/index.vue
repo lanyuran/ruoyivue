@@ -69,7 +69,7 @@ export default {
     // 大小限制(MB)
     fileSize: {
        type: Number,
-      default: 5
+      default: 10
     },
     // 文件类型, 例如['png', 'jpg', 'jpeg']
     fileType: {
@@ -183,9 +183,9 @@ export default {
         return false
       }
       if (this.fileSize) {
-        const isLt = file.size / 1024 / 1024 < this.fileSize
-        if (!isLt) {
-          this.$modal.msgError(`上传头像图片大小不能超过 ${this.fileSize} MB!`)
+        const isAllowedSize = file.size / 1024 / 1024 <= this.fileSize
+        if (!isAllowedSize) {
+          this.$modal.msgError(`上传图片大小不能超过 ${this.fileSize} MB!`)
           return false
         }
       }

@@ -35,7 +35,7 @@
           <el-form-item label="就诊日期" prop="visitTime">
             <el-date-picker v-model="form.visitTime" type="date" value-format="yyyy-MM-dd" style="width: 100%" />
           </el-form-item>
-          <el-form-item label="就诊医院" prop="hospitalDeptId">
+          <el-form-item label="就诊医院" prop="hospital">
             <el-select
               v-model="form.hospitalDeptId"
               clearable
@@ -50,7 +50,16 @@
                 :label="item.deptName"
                 :value="item.deptId"
               />
+              <el-option label="其他医院" value="__OTHER__" />
             </el-select>
+            <div v-if="isOtherHospital" class="hospital-other">
+              <el-input
+                v-model="form.hospitalOther"
+                placeholder="请输入其他医院名称"
+                clearable
+                @input="handleHospitalOtherInput"
+              />
+            </div>
           </el-form-item>
           <el-form-item label="联系电话" prop="phone">
             <el-input v-model="form.phone" maxlength="11" placeholder="请输入手机号，提交后会作为登录账号" />
@@ -115,11 +124,15 @@
           <el-form-item label="特异性IgE">
             <el-input v-model="form.allergenSpecificIge" placeholder="选填" />
           </el-form-item>
-          <el-form-item label="中医诊断">
-            <el-input v-model="form.tcmDiagnosis" type="textarea" :rows="2" placeholder="选填" />
+          <el-form-item label="中医诊断" prop="tcmDiagnosis">
+            <el-radio-group v-model="form.tcmDiagnosis" class="choice-stack">
+              <el-radio v-for="item in tcmDiagnosisOptions" :key="item" :label="item">{{ item }}</el-radio>
+            </el-radio-group>
           </el-form-item>
-          <el-form-item label="中医治法">
-            <el-input v-model="form.tcmTreatment" type="textarea" :rows="2" placeholder="选填" />
+          <el-form-item label="中医治法" prop="tcmTreatment">
+            <el-radio-group v-model="form.tcmTreatment" class="choice-stack">
+              <el-radio v-for="item in tcmTreatmentOptions" :key="item" :label="item">{{ item }}</el-radio>
+            </el-radio-group>
           </el-form-item>
           <el-form-item label="中医外治">
             <el-checkbox-group v-model="form.tcmExternalSelections" class="choice-stack">
@@ -182,6 +195,16 @@ export default {
       }
       callback(new Error('请至少选择一项主证'))
     }
+    const validateHospital = (rule, value, callback) => {
+      const selected = this.form && this.form.hospitalDeptId && this.form.hospitalDeptId !== '__OTHER__'
+      const otherSelected = this.form && this.form.hospitalDeptId === '__OTHER__'
+      const other = this.form && this.form.hospitalOther ? this.form.hospitalOther.trim() : ''
+      if (selected || otherSelected || !this.form || !this.form.hospitalDeptId) {
+        callback()
+        return
+      }
+      callback(new Error('请选择就诊医院'))
+    }
     return {
       activeStep: 0,
       submitting: false,
@@ -189,6 +212,8 @@ export default {
       mainSymptomOptions: ['鼻塞', '鼻痒', '喷嚏', '流清涕', '流黄涕', '发热恶寒', '咽痒', '口干', '鼻腔干燥', '神疲乏力', '少气懒言', '自汗', '胃纳欠佳', '面色无华', '形寒肢冷', '腰膝酸软', '其他'],
       comorbidityOptions: ['鼻窦炎', '鼻息肉', '过敏性哮喘', '过敏性皮炎', '过敏性结膜炎', '过敏性咳嗽', '抽动障碍', '腺样体肥大', '分泌性中耳炎', '其他'],
       physicalExamOptions: ['鼻黏膜色红', '鼻黏膜色淡', '鼻甲肿胀', '鼻道水样分泌物', '其他'],
+      tcmDiagnosisOptions: ['鼻鼽 风寒犯肺证', '鼻鼽 风热犯肺证', '鼻鼽 肺脾气虚证', '鼻鼽 肺肾阳虚证'],
+      tcmTreatmentOptions: ['疏风散寒 宣通鼻窍', '疏风清热 宣通鼻窍', '补脾益肺 通窍散结', '温补肺肾 通窍散结'],
       tcmExternalOptions: [
         '香嗅疗法：鼻炎通窍散，每日闻香2次，每次2分钟，睡觉时放于枕边。',
         '耳穴压豆疗法：使用王不留行子耳穴贴，双耳穴位各选取内鼻、外鼻，每周二次，每次贴3天，中间休息1天，每天捏各穴位2次，每次100下。'
@@ -198,13 +223,15 @@ export default {
         name: [{ required: true, message: '请输入患者姓名', trigger: 'blur' }],
         birthDate: [{ required: true, message: '请选择出生日期', trigger: 'change' }],
         visitTime: [{ required: true, message: '请选择就诊日期', trigger: 'change' }],
-        hospitalDeptId: [{ required: true, message: '请选择就诊医院', trigger: 'change' }],
+        hospital: [{ validator: validateHospital, trigger: ['change', 'blur'] }],
         phone: [
           { required: true, message: '请输入联系电话', trigger: 'blur' },
           { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
         ],
         chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
-        mainSymptomSelections: [{ validator: validateMainSymptom, trigger: 'change' }]
+        mainSymptomSelections: [{ validator: validateMainSymptom, trigger: 'change' }],
+        tcmDiagnosis: [{ required: true, message: '请选择中医诊断', trigger: 'change' }],
+        tcmTreatment: [{ required: true, message: '请选择中医治法', trigger: 'change' }]
       }
     }
   },
@@ -212,6 +239,11 @@ export default {
     this.reset()
     this.loadHospitalOptions()
     this.refreshToken()
+  },
+  computed: {
+    isOtherHospital() {
+      return this.form && this.form.hospitalDeptId === '__OTHER__'
+    }
   },
   methods: {
     reset() {
@@ -223,6 +255,7 @@ export default {
         visitTime: undefined,
         hospitalDeptId: undefined,
         hospital: undefined,
+        hospitalOther: undefined,
         medicalRecordNo: undefined,
         parentName: undefined,
         phone: undefined,
@@ -266,8 +299,32 @@ export default {
       })
     },
     handleHospitalChange(value) {
+      if (value === '__OTHER__') {
+        this.form.hospital = this.form.hospitalOther ? this.form.hospitalOther.trim() : '其他医院'
+        this.$nextTick(() => {
+          this.$refs.form && this.$refs.form.validateField('hospital')
+        })
+        return
+      }
       const selected = this.hospitalOptions.find(item => item.deptId === value)
       this.form.hospital = selected ? selected.deptName : undefined
+      if (selected) {
+        this.form.hospitalOther = undefined
+      }
+      this.$nextTick(() => {
+        this.$refs.form && this.$refs.form.validateField('hospital')
+      })
+    },
+    handleHospitalOtherInput(value) {
+      const hospitalOther = value ? value.trim() : ''
+      if (hospitalOther) {
+        this.form.hospital = hospitalOther
+      } else {
+        this.form.hospital = this.form.hospitalDeptId === '__OTHER__' ? '其他医院' : '其他医院'
+      }
+      this.$nextTick(() => {
+        this.$refs.form && this.$refs.form.validateField('hospital')
+      })
     },
     goHome() {
       this.$router.push('/index')
@@ -309,21 +366,34 @@ export default {
       })
     },
     resolveInvalidStep() {
-      if (!this.form.name || !this.form.birthDate || !this.form.visitTime || !this.form.hospitalDeptId || !this.form.phone) {
+      const hospitalOther = this.form.hospitalOther ? this.form.hospitalOther.trim() : ''
+      const hasHospital = !this.form.hospitalDeptId || this.form.hospitalDeptId !== '__OTHER__' || this.form.hospitalDeptId === '__OTHER__' || !!hospitalOther
+      if (!this.form.name || !this.form.birthDate || !this.form.visitTime || !hasHospital || !this.form.phone) {
         return 0
       }
       const selectedSymptoms = (this.form.mainSymptomSelections || []).filter(item => item !== '其他')
       const mainSymptomOther = this.form.mainSymptomOther ? this.form.mainSymptomOther.trim() : ''
-      if (!this.form.chiefComplaint || (!selectedSymptoms.length && !mainSymptomOther)) {
+      if (!this.form.chiefComplaint || (!selectedSymptoms.length && !mainSymptomOther) || !this.form.tcmDiagnosis || !this.form.tcmTreatment) {
         return 1
       }
       return 2
     },
     syncChoiceFields() {
+      this.syncHospitalField()
       this.form.mainSymptom = this.buildSelectionText(this.form.mainSymptomSelections, this.form.mainSymptomOther, '')
       this.form.comorbidity = this.buildSelectionText(this.form.comorbiditySelections, this.form.comorbidityOther, '无')
       this.form.physicalExam = this.buildSelectionText(this.form.physicalExamSelections, this.form.physicalExamOther, '无')
       this.form.tcmExternalPrescription = this.buildSelectionText(this.form.tcmExternalSelections, this.form.tcmExternalOther, '')
+    },
+    syncHospitalField() {
+      const hospitalOther = this.form.hospitalOther ? this.form.hospitalOther.trim() : ''
+      if (this.form.hospitalDeptId === '__OTHER__') {
+        this.form.hospital = hospitalOther || '其他医院'
+        this.form.hospitalDeptId = undefined
+        return
+      }
+      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
+      this.form.hospital = selected ? selected.deptName : '其他医院'
     },
     buildSelectionText(selected, other, emptyText) {
       const result = (selected || []).filter(item => item !== '其他')
@@ -343,6 +413,7 @@ export default {
       delete payload.physicalExamOther
       delete payload.tcmExternalSelections
       delete payload.tcmExternalOther
+      delete payload.hospitalOther
       return payload
     }
   }
@@ -403,6 +474,10 @@ export default {
 
 .form-wrap {
   margin-top: 20px;
+}
+
+.hospital-other {
+  margin-top: 10px;
 }
 
 .upload-tip {
@@ -467,5 +542,6 @@ export default {
   .choice-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 </style>

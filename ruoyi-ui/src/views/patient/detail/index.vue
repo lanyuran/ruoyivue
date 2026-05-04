@@ -42,7 +42,6 @@
           <div class="doc-item"><span class="label">出生日期</span><span class="value">{{ formatDate(detail.birthDate) }}</span></div>
           <div class="doc-item"><span class="label">联系电话</span><span class="value">{{ detail.phone || '-' }}</span></div>
           <div class="doc-item"><span class="label">监护人姓名</span><span class="value">{{ detail.parentName || '-' }}</span></div>
-          <div class="doc-item"><span class="label">填表时间</span><span class="value">{{ formatDateTime(detail.fillTime) }}</span></div>
           <div class="doc-item"><span class="label">录入账号</span><span class="value">{{ detail.createBy || '-' }}</span></div>
         </div>
       </section>

@@ -77,6 +77,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where p.visit_id = #{visitId}
     </select>
 
+    <select id="selectDistinctHospitalOptions" resultType="map">
+        select distinct hospital_dept_id as hospitalDeptId, hospital
+        from patient_visit_info
+        where hospital_dept_id is not null
+           or (hospital is not null and hospital != '')
+        order by hospital_dept_id asc, hospital asc
+    </select>
+
     <insert id="insertPatientVisitInfo" parameterType="PatientVisitInfo" useGeneratedKeys="true" keyProperty="visitId">
         insert into patient_visit_info
         <trim prefix="(" suffix=")" suffixOverrides=",">

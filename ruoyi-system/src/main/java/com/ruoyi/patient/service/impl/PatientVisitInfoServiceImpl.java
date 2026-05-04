@@ -1,10 +1,16 @@
 package com.ruoyi.patient.service.impl;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.dao.DuplicateKeyException;
@@ -42,6 +48,8 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     private static final String ROLE_KEY_MANAGER = "manager";
     private static final String HOSPITAL_ROOT_NAME = "医院";
 
+    private static final String OTHER_HOSPITAL_NAME = "其他医院";
+
     @Autowired
     private PatientVisitInfoMapper patientVisitInfoMapper;
 
@@ -60,6 +68,12 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     @Autowired
     private SysRoleMapper roleMapper;
 
+    private final Map<Long, SysDept> deptCache = new ConcurrentHashMap<>();
+    private final Map<Long, Long> hospitalDeptIdCache = new ConcurrentHashMap<>();
+    private final Map<String, Long> hospitalNameDeptIdCache = new ConcurrentHashMap<>();
+    private volatile List<TreeSelect> deptTreeCache;
+    private volatile TreeSelect hospitalRootCache;
+
     /**
      * 查询鼻炎患者就诊信息主（包含文档中所有字段）
      *
@@ -69,7 +83,9 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     @Override
     public PatientVisitInfo selectPatientVisitInfoByVisitId(Long visitId)
     {
-        return patientVisitInfoMapper.selectPatientVisitInfoByVisitId(visitId);
+        PatientVisitInfo patientVisitInfo = patientVisitInfoMapper.selectPatientVisitInfoByVisitId(visitId);
+        normalizeHospitalDisplay(patientVisitInfo);
+        return patientVisitInfo;
     }
 
     /**
@@ -82,7 +98,58 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     public List<PatientVisitInfo> selectPatientVisitInfoList(PatientVisitInfo patientVisitInfo)
     {
         applyHospitalScope(patientVisitInfo);
-        return patientVisitInfoMapper.selectPatientVisitInfoList(patientVisitInfo);
+        List<PatientVisitInfo> list = patientVisitInfoMapper.selectPatientVisitInfoList(patientVisitInfo);
+        if (list != null)
+        {
+            for (PatientVisitInfo info : list)
+            {
+                normalizeHospitalDisplay(info);
+            }
+        }
+        return list;
+    }
+
+    @Override
+    public List<Map<String, Object>> listHospitalOptions()
+    {
+        LinkedHashMap<Long, Map<String, Object>> options = new LinkedHashMap<>();
+        for (String hospitalName : getPresetHospitals())
+        {
+            Long deptId = ensureHospitalDeptId(hospitalName);
+            if (deptId == null)
+            {
+                continue;
+            }
+            options.put(deptId, buildHospitalOption(deptId, hospitalName));
+        }
+        List<Map<String, Object>> rawOptions = patientVisitInfoMapper.selectDistinctHospitalOptions();
+        if (rawOptions != null)
+        {
+            for (Map<String, Object> rawOption : rawOptions)
+            {
+                Long deptId = resolveHospitalOptionDeptId(rawOption);
+                if (deptId == null || options.containsKey(deptId))
+                {
+                    continue;
+                }
+                SysDept dept = getDeptById(deptId);
+                String deptName = dept == null ? null : trimToNull(dept.getDeptName());
+                if (deptName == null)
+                {
+                    deptName = normalizeHospitalName(rawOption == null ? null : String.valueOf(rawOption.get("hospital")));
+                }
+                if (deptName == null || OTHER_HOSPITAL_NAME.equals(deptName))
+                {
+                    continue;
+                }
+                options.put(deptId, buildHospitalOption(deptId, deptName));
+            }
+        }
+        if (!options.isEmpty())
+        {
+            return new ArrayList<>(options.values());
+        }
+        return buildHospitalOptionsFromDeptTree();
     }
 
     /**
@@ -278,6 +345,51 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         patientVisitInfo.setPhone(trimToNull(patientVisitInfo.getPhone()));
         patientVisitInfo.setHospital(trimToNull(patientVisitInfo.getHospital()));
         patientVisitInfo.setMedicalRecordNo(trimToNull(patientVisitInfo.getMedicalRecordNo()));
+    }
+
+    private SysDept getDeptById(Long deptId)
+    {
+        if (deptId == null)
+        {
+            return null;
+        }
+        SysDept cached = deptCache.get(deptId);
+        if (cached != null)
+        {
+            return cached;
+        }
+        SysDept dept = deptService.selectDeptById(deptId);
+        if (dept != null)
+        {
+            deptCache.put(deptId, dept);
+        }
+        return dept;
+    }
+
+    private List<TreeSelect> getDeptTree()
+    {
+        List<TreeSelect> cached = deptTreeCache;
+        if (cached != null)
+        {
+            return cached;
+        }
+        synchronized (this)
+        {
+            if (deptTreeCache == null)
+            {
+                SysDept dept = new SysDept();
+                deptTreeCache = deptService.selectDeptTreeListPublic(dept);
+            }
+            return deptTreeCache;
+        }
+    }
+
+    private void clearHospitalCaches()
+    {
+        deptTreeCache = null;
+        hospitalRootCache = null;
+        hospitalNameDeptIdCache.clear();
+        hospitalDeptIdCache.clear();
     }
 
     private Long resolvePatientAccountUserId(String phone)
@@ -619,18 +731,38 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         SysUser user = loginUser == null ? null : loginUser.getUser();
         boolean isAdmin = user != null && user.isAdmin();
         boolean isManager = hasRole(user, ROLE_KEY_MANAGER);
-        String hospitalName = StringUtils.trim(patientVisitInfo.getHospital());
+        boolean isPublicSubmit = loginUser == null;
+        String hospitalName = normalizeHospitalName(patientVisitInfo.getHospital());
+        if (StringUtils.isEmpty(hospitalName) && patientVisitInfo.getHospitalDeptId() == null)
+        {
+            hospitalName = OTHER_HOSPITAL_NAME;
+        }
         patientVisitInfo.setHospital(StringUtils.isEmpty(hospitalName) ? null : hospitalName);
         if (patientVisitInfo.getHospitalDeptId() != null)
         {
-            SysDept selected = deptService.selectDeptById(patientVisitInfo.getHospitalDeptId());
+            SysDept selected = getDeptById(patientVisitInfo.getHospitalDeptId());
+            if (selected == null)
+            {
+                String presetHospitalName = getPresetHospitalCodeMap().get(patientVisitInfo.getHospitalDeptId());
+                if (StringUtils.isNotEmpty(presetHospitalName))
+                {
+                    Long presetDeptId = ensureHospitalDeptId(presetHospitalName);
+                    if (presetDeptId != null)
+                    {
+                        patientVisitInfo.setHospitalDeptId(presetDeptId);
+                        patientVisitInfo.setHospital(presetHospitalName);
+                        hospitalName = presetHospitalName;
+                        selected = getDeptById(presetDeptId);
+                    }
+                }
+            }
             if (selected == null)
             {
                 throw new ServiceException("选择的医院不存在");
             }
             patientVisitInfo.setHospitalDeptId(selected.getDeptId());
-            patientVisitInfo.setHospital(selected.getDeptName());
-            hospitalName = selected.getDeptName();
+            patientVisitInfo.setHospital(normalizeHospitalName(selected.getDeptName()));
+            hospitalName = patientVisitInfo.getHospital();
         }
         else if (StringUtils.isNotEmpty(hospitalName))
         {
@@ -639,9 +771,18 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
             {
                 patientVisitInfo.setHospitalDeptId(resolvedId);
             }
-            else if (isAdmin || isManager)
+            else if (OTHER_HOSPITAL_NAME.equals(hospitalName))
             {
-                Long createdId = createHospitalDept(hospitalName, loginUser == null ? "system" : loginUser.getUsername());
+                Long otherHospitalDeptId = ensureHospitalDeptId(OTHER_HOSPITAL_NAME);
+                if (otherHospitalDeptId == null)
+                {
+                    throw new ServiceException("其他医院节点创建失败，请检查医院根节点配置");
+                }
+                patientVisitInfo.setHospitalDeptId(otherHospitalDeptId);
+            }
+            else if (isAdmin || isManager || isPublicSubmit)
+            {
+                Long createdId = createHospitalDept(hospitalName, resolveOperator(patientVisitInfo));
                 if (createdId == null)
                 {
                     throw new ServiceException("未找到“医院”根节点，请先在医院管理中创建");
@@ -668,7 +809,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         }
         if (StringUtils.isEmpty(patientVisitInfo.getHospital()) && patientVisitInfo.getHospitalDeptId() != null)
         {
-            SysDept hospitalDept = deptService.selectDeptById(patientVisitInfo.getHospitalDeptId());
+            SysDept hospitalDept = getDeptById(patientVisitInfo.getHospitalDeptId());
             if (hospitalDept != null && StringUtils.isNotEmpty(hospitalDept.getDeptName()))
             {
                 patientVisitInfo.setHospital(hospitalDept.getDeptName());
@@ -722,7 +863,12 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         {
             return null;
         }
-        SysDept dept = deptService.selectDeptById(deptId);
+        Long cachedDeptId = hospitalDeptIdCache.get(deptId);
+        if (cachedDeptId != null)
+        {
+            return cachedDeptId;
+        }
+        SysDept dept = getDeptById(deptId);
         if (dept == null)
         {
             return deptId;
@@ -733,23 +879,31 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         {
             if (hospitalRootId.equals(dept.getDeptId()))
             {
+                hospitalDeptIdCache.put(deptId, dept.getDeptId());
                 return dept.getDeptId();
             }
             if (dept.getParentId() != null && hospitalRootId.equals(dept.getParentId()))
             {
+                hospitalDeptIdCache.put(deptId, dept.getDeptId());
                 return dept.getDeptId();
             }
             int rootIndex = ancestorIds.indexOf(hospitalRootId);
             if (rootIndex >= 0 && rootIndex + 1 < ancestorIds.size())
             {
-                return ancestorIds.get(rootIndex + 1);
+                Long resolved = ancestorIds.get(rootIndex + 1);
+                hospitalDeptIdCache.put(deptId, resolved);
+                return resolved;
             }
+            hospitalDeptIdCache.put(deptId, dept.getDeptId());
             return dept.getDeptId();
         }
         if (!ancestorIds.isEmpty())
         {
-            return ancestorIds.get(0);
+            Long resolved = ancestorIds.get(0);
+            hospitalDeptIdCache.put(deptId, resolved);
+            return resolved;
         }
+        hospitalDeptIdCache.put(deptId, deptId);
         return deptId;
     }
 
@@ -791,7 +945,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         }
         for (Long ancestorId : ancestorIds)
         {
-            SysDept ancestor = deptService.selectDeptById(ancestorId);
+            SysDept ancestor = getDeptById(ancestorId);
             if (ancestor != null && HOSPITAL_ROOT_NAME.equals(ancestor.getDeptName()))
             {
                 return ancestor.getDeptId();
@@ -802,17 +956,38 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
 
     private Long resolveHospitalDeptIdByName(String hospitalName)
     {
-        if (StringUtils.isEmpty(hospitalName))
+        String normalizedHospitalName = normalizeHospitalName(hospitalName);
+        if (StringUtils.isEmpty(normalizedHospitalName))
         {
             return null;
         }
-        String trimmed = StringUtils.trim(hospitalName);
-        SysDept dept = new SysDept();
-        List<TreeSelect> deptTree = deptService.selectDeptTreeListPublic(dept);
+        String trimmed = normalizedHospitalName;
+        Long cachedDeptId = hospitalNameDeptIdCache.get(trimmed);
+        if (cachedDeptId != null)
+        {
+            return cachedDeptId;
+        }
+        Long numericDeptId = parseLong(trimmed);
+        if (numericDeptId != null)
+        {
+            Long normalizedDeptId = resolveHospitalDeptId(numericDeptId);
+            Long candidateDeptId = normalizedDeptId == null ? numericDeptId : normalizedDeptId;
+            if (getDeptById(candidateDeptId) != null)
+            {
+                hospitalNameDeptIdCache.put(trimmed, candidateDeptId);
+                return candidateDeptId;
+            }
+        }
+        List<TreeSelect> deptTree = getDeptTree();
         TreeSelect hospitalRoot = findHospitalRootNode(deptTree);
         if (hospitalRoot == null)
         {
-            return findDeptIdByName(deptTree, trimmed);
+            Long found = findDeptIdByName(deptTree, trimmed);
+            if (found != null)
+            {
+                hospitalNameDeptIdCache.put(trimmed, found);
+            }
+            return found;
         }
         if (HOSPITAL_ROOT_NAME.equals(trimmed))
         {
@@ -863,9 +1038,14 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
 
     private TreeSelect resolveHospitalRootNode()
     {
-        SysDept dept = new SysDept();
-        List<TreeSelect> deptTree = deptService.selectDeptTreeListPublic(dept);
-        return findHospitalRootNode(deptTree);
+        TreeSelect cached = hospitalRootCache;
+        if (cached != null)
+        {
+            return cached;
+        }
+        TreeSelect resolved = findHospitalRootNode(getDeptTree());
+        hospitalRootCache = resolved;
+        return resolved;
     }
 
     private TreeSelect findHospitalRootNode(List<TreeSelect> nodes)
@@ -907,6 +1087,238 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
         dept.setStatus("0");
         dept.setCreateBy(username);
         deptService.insertDept(dept);
+        clearHospitalCaches();
         return resolveHospitalDeptIdByName(hospitalName);
+    }
+
+    private List<Map<String, Object>> buildHospitalOptionsFromDeptTree()
+    {
+        List<Map<String, Object>> options = new ArrayList<>();
+        TreeSelect hospitalRoot = resolveHospitalRootNode();
+        if (hospitalRoot == null || hospitalRoot.getChildren() == null)
+        {
+            return options;
+        }
+        for (TreeSelect child : hospitalRoot.getChildren())
+        {
+            if (child == null || child.getId() == null || StringUtils.isEmpty(child.getLabel()))
+            {
+                continue;
+            }
+            options.add(buildHospitalOption(child.getId(), normalizeHospitalName(child.getLabel())));
+        }
+        return options;
+    }
+
+    private Long resolveHospitalOptionDeptId(Map<String, Object> rawOption)
+    {
+        if (rawOption == null || rawOption.isEmpty())
+        {
+            return null;
+        }
+        Long hospitalDeptId = parseLong(rawOption.get("hospitalDeptId"));
+        if (hospitalDeptId != null)
+        {
+            Long normalizedDeptId = resolveHospitalDeptId(hospitalDeptId);
+            if (normalizedDeptId != null && getDeptById(normalizedDeptId) != null)
+            {
+                return normalizedDeptId;
+            }
+            if (getDeptById(hospitalDeptId) != null)
+            {
+                return hospitalDeptId;
+            }
+        }
+        String hospital = trimToNull(rawOption.get("hospital") == null ? null : String.valueOf(rawOption.get("hospital")));
+        if (hospital == null)
+        {
+            return null;
+        }
+        String normalizedHospitalName = normalizeHospitalName(hospital);
+        if (normalizedHospitalName == null)
+        {
+            return null;
+        }
+        return ensureHospitalDeptId(normalizedHospitalName);
+    }
+
+    private Map<String, Object> buildHospitalOption(Long deptId, String deptName)
+    {
+        Map<String, Object> option = new HashMap<>();
+        option.put("deptId", deptId);
+        option.put("deptName", deptName);
+        return option;
+    }
+
+    private Long parseLong(Object value)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        if (value instanceof Number)
+        {
+            return ((Number) value).longValue();
+        }
+        String text = trimToNull(String.valueOf(value));
+        if (text == null)
+        {
+            return null;
+        }
+        try
+        {
+            return new BigDecimal(text).longValueExact();
+        }
+        catch (ArithmeticException | NumberFormatException ex)
+        {
+            return null;
+        }
+    }
+
+    private String normalizeHospitalName(String hospitalName)
+    {
+        String trimmed = trimToNull(hospitalName);
+        if (trimmed == null)
+        {
+            return null;
+        }
+        Long presetCode = parseLong(trimmed);
+        if (presetCode != null)
+        {
+            String presetHospitalName = getPresetHospitalCodeMap().get(presetCode);
+            if (StringUtils.isNotEmpty(presetHospitalName))
+            {
+                return presetHospitalName;
+            }
+        }
+        for (String presetHospital : getPresetHospitals())
+        {
+            if (presetHospital.equals(trimmed))
+            {
+                return presetHospital;
+            }
+        }
+        return trimmed;
+    }
+
+    private Long ensureHospitalDeptId(String hospitalName)
+    {
+        String normalizedHospitalName = normalizeHospitalName(hospitalName);
+        if (normalizedHospitalName == null)
+        {
+            return null;
+        }
+        Long resolvedId = resolveHospitalDeptIdByNameOnly(normalizedHospitalName);
+        if (resolvedId != null)
+        {
+            return resolvedId;
+        }
+        return createHospitalDept(normalizedHospitalName, "system");
+    }
+
+    private void normalizeHospitalDisplay(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            return;
+        }
+        String normalizedHospitalName = normalizeHospitalName(patientVisitInfo.getHospital());
+        if (StringUtils.isNotEmpty(normalizedHospitalName))
+        {
+            patientVisitInfo.setHospital(normalizedHospitalName);
+        }
+        if (OTHER_HOSPITAL_NAME.equals(patientVisitInfo.getHospital()))
+        {
+            return;
+        }
+        if (patientVisitInfo.getHospitalDeptId() != null)
+        {
+            SysDept dept = getDeptById(patientVisitInfo.getHospitalDeptId());
+            if (dept != null && StringUtils.isNotEmpty(dept.getDeptName()))
+            {
+                patientVisitInfo.setHospital(normalizeHospitalName(dept.getDeptName()));
+            }
+        }
+    }
+
+    private Long resolveHospitalDeptIdByNameOnly(String hospitalName)
+    {
+        if (StringUtils.isEmpty(hospitalName))
+        {
+            return null;
+        }
+        String trimmed = StringUtils.trim(hospitalName);
+        Long cachedDeptId = hospitalNameDeptIdCache.get(trimmed);
+        if (cachedDeptId != null)
+        {
+            return cachedDeptId;
+        }
+        List<TreeSelect> deptTree = getDeptTree();
+        TreeSelect hospitalRoot = findHospitalRootNode(deptTree);
+        if (hospitalRoot == null)
+        {
+            Long found = findDeptIdByName(deptTree, trimmed);
+            if (found != null)
+            {
+                hospitalNameDeptIdCache.put(trimmed, found);
+            }
+            return found;
+        }
+        if (HOSPITAL_ROOT_NAME.equals(trimmed))
+        {
+            return hospitalRoot.getId();
+        }
+        if (hospitalRoot.getChildren() == null)
+        {
+            return null;
+        }
+        for (TreeSelect child : hospitalRoot.getChildren())
+        {
+            if (child == null || StringUtils.isEmpty(child.getLabel()))
+            {
+                continue;
+            }
+            if (trimmed.equals(StringUtils.trim(child.getLabel())))
+            {
+                hospitalNameDeptIdCache.put(trimmed, child.getId());
+                return child.getId();
+            }
+        }
+        return null;
+    }
+
+    private List<String> getPresetHospitals()
+    {
+        return Arrays.asList(
+            "浙江省中医院",
+            "浙江省新华医院",
+            "浙江省中山医院",
+            "杭州市红十字会医院",
+            "绍兴市中医院",
+            "嘉兴市中医医院",
+            "海宁市中医院",
+            "宁波市镇海区中医医院",
+            "嘉善县中医院",
+            "宁海县中医院",
+            "东阳市妇幼保健院",
+            "湖州市南浔区中医院",
+            "安吉县中医院",
+            "长兴县中医院",
+            "余姚市第二人民医院",
+            "杭州市儿童医院",
+            "社区卫生服务中心"
+        );
+    }
+
+    private Map<Long, String> getPresetHospitalCodeMap()
+    {
+        Map<Long, String> codeMap = new LinkedHashMap<>();
+        List<String> hospitals = getPresetHospitals();
+        for (int i = 0; i < hospitals.size(); i++)
+        {
+            codeMap.put(Long.valueOf(i + 1L), hospitals.get(i));
+        }
+        codeMap.put(18L, "其他医院");
+        return codeMap;
     }
 }
