@@ -1,0 +1,86 @@
+更新数据库
+
+本文档只说明数据库更新，不涉及前端 dist 和后端 jar 本身的更新。
+
+一、先判断这次属于哪种数据库更新
+
+当前项目常见有两种情况。
+
+第一种，只是代码逻辑更新，没有表结构变化。这种情况通常不需要动数据库。
+
+第二种，确实要重新执行 SQL，比如清理测试数据、重建表结构、重置初始化数据。这种情况再执行脚本。
+
+二、执行数据库脚本前，建议先停后端
+
+执行：
+
+systemctl stop ruoyi-admin
+
+这样可以避免脚本执行过程中，后端还在读写数据库。
+
+三、重新运行整合脚本
+
+如果你已经把 sql/0_整合脚本.sql 上传到服务器，例如放在 /root/0_整合脚本.sql，可以直接执行：
+
+mysql -uroot -p < /root/0_整合脚本.sql
+
+如果脚本里已经包含删除和重建逻辑，就不需要额外手工 drop。
+
+四、脚本执行完后必须修正数据库用户认证方式
+
+这一点在当前项目里非常重要。执行：
+
+mysql -uroot -p
+
+进入 MySQL 后执行：
+
+ALTER USER 'fluser'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+FLUSH PRIVILEGES;
+EXIT;
+
+如果不做这一步，后端极有可能连接失败并报：
+
+Public Key Retrieval is not allowed
+
+五、重新启动后端
+
+执行：
+
+systemctl start ruoyi-admin
+systemctl status ruoyi-admin --no-pager -l
+
+再看日志：
+
+journalctl -u ruoyi-admin -n 80 --no-pager -l
+
+如果日志中有 Started RuoYiApplication 和 若依启动成功，说明数据库更新后系统已经恢复正常。
+
+六、数据库更新后要检查什么
+
+1. fl 数据库是否存在
+2. fluser 是否还能正常登录
+3. 后端是否能正常启动
+4. 登录、查询、上传、导入是否正常
+
+可以直接测试：
+
+mysql -ufluser -p -D fl
+
+七、清空测试数据时的推荐做法
+
+如果你的目标只是清掉服务器上的测试数据，并且脚本里已经写好了删除和重建逻辑，那么最简单的顺序就是：
+
+1. systemctl stop ruoyi-admin
+2. mysql -uroot -p < /root/0_整合脚本.sql
+3. mysql -uroot -p
+4. ALTER USER 'fluser'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+5. FLUSH PRIVILEGES;
+6. systemctl start ruoyi-admin
+
+八、数据库更新时最常见问题
+
+第一，用 fluser 直接跑整合脚本，结果因为脚本里有 CREATE USER 或更高权限语句而失败。整合脚本应该用 root 执行。
+
+第二，脚本跑完忘记修正 fluser 的认证方式，导致后端一直重启。
+
+第三，脚本执行后以为前端有问题，其实是后端没启动成功。先看 systemctl status 和 journalctl，不要先怀疑页面。

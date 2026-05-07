@@ -1,0 +1,267 @@
+服务器完整部署流程
+
+本文档按当前项目已经实际跑通的方式整理，适用于 Ubuntu 24.04 服务器，部署形态为 Nginx + Spring Boot jar + MySQL + Redis。
+
+一、服务器目标结构
+
+服务器最终目录建议如下：
+
+/opt/ruoyi/backend
+/opt/ruoyi/frontend
+/opt/ruoyi/logs
+/opt/ruoyi/image-cache
+
+其中：
+
+/opt/ruoyi/backend/ruoyi-admin.jar                后端 jar
+/opt/ruoyi/backend/application-prod.yml           后端生产配置
+/opt/ruoyi/frontend/dist                          前端打包结果
+/opt/ruoyi/image-cache                            上传和静态资源目录
+
+二、安装基础环境
+
+登录服务器后，先安装基础软件：
+
+apt update
+apt upgrade -y
+apt install -y openjdk-11-jdk-headless nginx mysql-server redis-server curl wget unzip vim git
+
+安装完成后检查版本和服务：
+
+java -version
+systemctl status nginx --no-pager
+systemctl status mysql --no-pager
+systemctl status redis-server --no-pager
+
+Redis 可额外执行：
+
+redis-cli ping
+
+如果返回 PONG，说明 Redis 正常。
+
+三、准备项目目录
+
+在服务器执行：
+
+mkdir -p /opt/ruoyi/backend
+mkdir -p /opt/ruoyi/frontend
+mkdir -p /opt/ruoyi/logs
+mkdir -p /opt/ruoyi/image-cache
+mkdir -p /opt/ruoyi/image-cache/upload/patient-mobile
+
+四、初始化数据库
+
+项目当前默认库名为 fl，默认业务账号为 fluser。最省事的做法是把本地 sql/0_整合脚本.sql 上传到服务器后直接执行。
+
+先把脚本上传到服务器，例如传到 /root/0_整合脚本.sql，然后执行：
+
+mysql -uroot -p < /root/0_整合脚本.sql
+
+脚本执行完以后，一定要补下面这一步：
+
+mysql -uroot -p
+
+进入 MySQL 后执行：
+
+ALTER USER 'fluser'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
+FLUSH PRIVILEGES;
+EXIT;
+
+这一步很重要。因为 MySQL 8 默认可能会把 fluser 建成 caching_sha2_password，不改回 mysql_native_password，后端会报 Public Key Retrieval is not allowed。
+
+五、本地打包
+
+后端打包：
+
+mvn -pl ruoyi-admin -am clean package -DskipTests
+
+生成文件：
+
+ruoyi-admin/target/ruoyi-admin.jar
+
+前端打包：
+
+cd ruoyi-ui
+npm install
+npm run build:prod
+
+生成目录：
+
+ruoyi-ui/dist
+
+六、上传部署文件
+
+需要上传三类文件：
+
+1. 后端 jar
+2. 前端 dist
+3. 后端生产配置 application-prod.yml
+
+示例：
+
+scp "E:/20251107 small people/ruoyivue/ruoyi-admin/target/ruoyi-admin.jar" root@服务器IP:/opt/ruoyi/backend/
+scp -r "E:/20251107 small people/ruoyivue/ruoyi-ui/dist" root@服务器IP:/opt/ruoyi/frontend/
+scp "E:/20251107 small people/ruoyivue/doc/02-部署运维/deploy/application-prod.yml.example" root@服务器IP:/opt/ruoyi/backend/application-prod.yml
+
+七、修改后端生产配置
+
+服务器上编辑：
+
+vim /opt/ruoyi/backend/application-prod.yml
+
+至少要确认这些值：
+
+spring.datasource.druid.master.url
+spring.datasource.druid.master.username
+spring.datasource.druid.master.password
+spring.redis.host
+spring.redis.port
+ruoyi.profile
+token.secret
+server.port
+
+当前项目推荐值如下：
+
+数据库地址用 127.0.0.1:3306/fl
+数据库用户用 fluser
+ruoyi.profile 用 /opt/ruoyi/image-cache
+server.port 用 8080
+
+八、配置 systemd 运行后端
+
+创建文件：
+
+/etc/systemd/system/ruoyi-admin.service
+
+内容建议如下：
+
+[Unit]
+Description=RuoYi Admin Service
+After=network.target mysql.service redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ruoyi/backend
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/ruoyi/backend/ruoyi-admin.jar --spring.config.additional-location=/opt/ruoyi/backend/application-prod.yml
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+
+执行：
+
+systemctl daemon-reload
+systemctl enable ruoyi-admin
+systemctl restart ruoyi-admin
+systemctl status ruoyi-admin --no-pager -l
+
+如需看日志：
+
+journalctl -u ruoyi-admin -f
+
+出现 Started RuoYiApplication 和 若依启动成功，说明后端正常。
+
+九、配置 Nginx
+
+当前项目线上已经跑通的一套关键配置包括：
+
+1. 前端 dist 由 Nginx 静态托管
+2. /prod-api/ 转发到 127.0.0.1:8080
+3. client_max_body_size 20m，用来支持患者端图片上传
+4. /prod-api/profile/upload/ 直接映射图片目录，解决图片回显问题
+5. server_name 明确写域名，便于 Certbot 自动安装证书
+
+示意配置如下：
+
+server {
+    listen 80;
+    server_name happyaeons.com www.happyaeons.com;
+    client_max_body_size 20m;
+
+    root /opt/ruoyi/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ^~ /prod-api/profile/upload/ {
+        alias /opt/ruoyi/image-cache/upload/;
+    }
+
+    location /prod-api/ {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_pass http://127.0.0.1:8080/;
+    }
+
+    location /profile/ {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+        proxy_pass http://127.0.0.1:8080/profile/;
+    }
+}
+
+配置完成后执行：
+
+nginx -t
+systemctl reload nginx
+
+十、配置 HTTPS
+
+如果域名已经解析到服务器，并且 80 和 443 端口已放行，可以直接执行：
+
+apt install -y certbot python3-certbot-nginx
+certbot --nginx -d happyaeons.com -d www.happyaeons.com
+
+如果系统提示已有证书，可以执行：
+
+certbot install --cert-name happyaeons.com
+
+安装成功后，用浏览器访问：
+
+https://happyaeons.com
+https://www.happyaeons.com
+
+另外执行：
+
+systemctl status certbot.timer --no-pager
+
+如果是 active，说明自动续期已启用。
+
+十一、部署完成后的检查项
+
+部署完成后至少检查下面这些：
+
+1. 首页能打开
+2. 登录正常
+3. 数据上传页和数据查询页能正常请求接口
+4. 患者公开填写页能正常提交
+5. 患者图片上传能成功并正常回显
+6. 详情页能正常显示图片
+7. Excel 导入正常
+8. journalctl -u ruoyi-admin -n 100 中没有数据库认证报错
+
+十二、当前项目最容易踩的坑
+
+第一，重建数据库后如果忘了把 fluser 改成 mysql_native_password，后端会不断重启并报 Public Key Retrieval is not allowed。
+
+第二，患者图片上传如果出现 client intended to send too large body，说明 Nginx 里没有放开 client_max_body_size。
+
+第三，上传成功但图片不显示，通常是 /prod-api/profile/upload/ 没有映射到 /opt/ruoyi/image-cache/upload/。
+
+第四，如果 Certbot 提示找不到匹配的 server block，通常是 Nginx 配置里的 server_name 还写成了下划线，而不是正式域名。

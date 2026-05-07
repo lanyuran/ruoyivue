@@ -1,0 +1,72 @@
+更新前端
+
+本文档只说明前端更新，不涉及后端 jar 和数据库脚本。
+
+一、本地重新打包
+
+进入前端目录后执行：
+
+cd ruoyi-ui
+npm install
+npm run build:prod
+
+打包完成后，产物目录为：
+
+ruoyi-ui/dist
+
+二、上传到服务器
+
+把新的 dist 上传到服务器。常见做法有两种。
+
+第一种是直接上传整个 dist 目录：
+
+scp -r "E:/20251107 small people/ruoyivue/ruoyi-ui/dist" root@服务器IP:/opt/ruoyi/frontend/
+
+第二种是先清空服务器旧目录，再把新 dist 覆盖进去。这个方式更干净，但要确认你不会误删别的东西。
+
+三、服务器上确认目录
+
+执行：
+
+ls -l /opt/ruoyi/frontend/
+ls -l /opt/ruoyi/frontend/dist
+
+确认新的前端文件已经上传到 dist 目录。
+
+四、重载 Nginx
+
+执行：
+
+nginx -t
+systemctl reload nginx
+
+前端静态资源本质上是 Nginx 直接读取，通常不需要重启后端。
+
+五、刷新浏览器缓存
+
+如果页面看起来还像旧版本，先强制刷新一次：
+
+Windows 浏览器常用 Ctrl + F5
+
+如果仍然不对，再确认服务器上的 dist 是否真的是新文件。
+
+六、前端更新后重点检查
+
+1. 首页文案是否更新
+2. 数据上传页和数据查询页是否更新
+3. 患者公开填写页是否更新
+4. 详情页是否更新
+5. 浏览器请求的静态 js 和 css 是否为新版本
+
+七、前端更新不生效时怎么排查
+
+第一，看服务器 dist 目录是否确实更新。
+
+第二，看浏览器是否用了旧缓存。
+
+第三，看是否把文件传错目录，例如把 dist 传成了 /opt/ruoyi/frontend/dist/dist。
+
+第四，看 Nginx 是否重载成功：
+
+nginx -t
+systemctl reload nginx

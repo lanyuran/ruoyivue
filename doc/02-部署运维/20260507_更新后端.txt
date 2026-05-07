@@ -1,0 +1,68 @@
+更新后端
+
+本文档只说明后端 jar 更新，不涉及数据库重建和前端 dist 更新。
+
+一、本地重新打包
+
+在项目根目录执行：
+
+mvn -pl ruoyi-admin -am clean package -DskipTests
+
+打包产物在：
+
+ruoyi-admin/target/ruoyi-admin.jar
+
+二、上传新 jar 到服务器
+
+执行：
+
+scp "E:/20251107 small people/ruoyivue/ruoyi-admin/target/ruoyi-admin.jar" root@服务器IP:/opt/ruoyi/backend/
+
+上传完成后，可执行：
+
+ls -l /opt/ruoyi/backend/ruoyi-admin.jar
+
+确认时间已经更新。
+
+三、重启后端服务
+
+执行：
+
+systemctl restart ruoyi-admin
+systemctl status ruoyi-admin --no-pager -l
+
+四、查看启动日志
+
+执行：
+
+journalctl -u ruoyi-admin -n 80 --no-pager -l
+
+重点看有没有下面这些字样：
+
+Started RuoYiApplication
+若依启动成功
+
+五、后端更新后重点检查
+
+1. 登录是否正常
+2. 接口是否正常返回
+3. 患者公开填写是否正常
+4. 数据上传和数据查询是否正常
+5. 图片上传和图片回显是否正常
+
+六、后端更新后最常见问题
+
+第一，数据库认证方式不对。重建数据库后如果 fluser 不是 mysql_native_password，后端会启动失败并报 Public Key Retrieval is not allowed。
+
+第二，application-prod.yml 没同步或被改坏。尤其要检查数据库地址、数据库密码、Redis、ruoyi.profile 和 token.secret。
+
+第三，重启后日志里一直报数据库或 Redis 连接异常。这种情况先不要看前端，先看 journalctl。
+
+七、如果只是改 Java 代码
+
+通常只需要这四步：
+
+1. 本地重新打 jar
+2. 上传 ruoyi-admin.jar
+3. systemctl restart ruoyi-admin
+4. 看日志确认启动成功
