@@ -7,7 +7,6 @@
           <div class="quick-entry__desc">
             患者无需注册，可直接打开填写链接提交信息；提交后系统会自动生成账号。
           </div>
-          <div class="quick-entry__link">{{ fillUrl }}</div>
         </div>
         <div class="quick-entry__actions">
           <el-button type="primary" @click="openFillPage">直接填写</el-button>
@@ -16,48 +15,46 @@
       </div>
     </el-card>
 
-    <el-form ref="queryForm" :model="queryParams" :inline="true" size="small" v-show="showSearch" label-width="90px">
+    <el-form ref="queryForm" :model="queryParams" :inline="true" size="small" v-show="showSearch" label-width="90px" class="query-form">
       <el-form-item label="患者姓名" prop="name">
-        <el-input v-model="queryParams.name" placeholder="请输入患者姓名" clearable @keyup.enter.native="handleQuery" />
-      </el-form-item>
-      <el-form-item label="就诊医院" prop="hospital">
-        <el-input v-model="queryParams.hospital" placeholder="请输入就诊医院" clearable @keyup.enter.native="handleQuery" />
-      </el-form-item>
-      <el-form-item label="病历号" prop="medicalRecordNo">
-        <el-input v-model="queryParams.medicalRecordNo" placeholder="请输入病历号" clearable @keyup.enter.native="handleQuery" />
+        <el-input v-model="queryParams.name" class="query-input" placeholder="请输入患者姓名" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
       <el-form-item label="联系电话" prop="phone">
-        <el-input v-model="queryParams.phone" placeholder="请输入联系电话" clearable @keyup.enter.native="handleQuery" />
+        <el-input v-model="queryParams.phone" class="query-input" placeholder="请输入联系电话" clearable @keyup.enter.native="handleQuery" />
       </el-form-item>
-      <el-form-item>
+      <el-form-item label="就诊医院" prop="hospital">
+        <el-input v-model="queryParams.hospital" class="query-input" placeholder="请输入就诊医院" clearable @keyup.enter.native="handleQuery" />
+      </el-form-item>
+      <el-form-item label="病历号" prop="medicalRecordNo">
+        <el-input v-model="queryParams.medicalRecordNo" class="query-input" placeholder="请输入病历号" clearable @keyup.enter.native="handleQuery" />
+      </el-form-item>
+      <el-form-item class="query-form__actions">
         <el-button type="primary" icon="el-icon-search" size="mini" @click="handleQuery">搜索</el-button>
         <el-button icon="el-icon-refresh" size="mini" @click="resetQuery">重置</el-button>
       </el-form-item>
     </el-form>
 
-    <el-row :gutter="10" class="mb8" v-if="!isPatientOnlyRole">
-      <el-col :span="1.5">
+    <div v-if="!isPatientOnlyRole" class="toolbar-row mb8">
+      <div class="toolbar-actions">
         <el-button type="primary" plain icon="el-icon-upload" size="mini" @click="handleExcelImport" v-hasPermi="['patient:information:add']">导入</el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="success" plain icon="el-icon-edit" size="mini" :disabled="single" @click="handleUpdate" v-hasPermi="['patient:information:edit']">修改</el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="danger" plain icon="el-icon-delete" size="mini" :disabled="multiple" @click="handleDelete" v-hasPermi="['patient:information:remove']">删除</el-button>
-      </el-col>
-      <el-col :span="1.5">
         <el-button type="warning" plain icon="el-icon-download" size="mini" @click="handleExport" v-hasPermi="['patient:information:export']">导出</el-button>
-      </el-col>
+      </div>
       <right-toolbar :showSearch.sync="showSearch" @queryTable="getList" />
-    </el-row>
+    </div>
 
     <el-table v-loading="loading" :data="informationList" @selection-change="handleSelectionChange">
       <el-table-column v-if="!isPatientOnlyRole" type="selection" width="55" align="center" />
-      <el-table-column label="编号" prop="visitId" width="80" align="center" />
+      <el-table-column label="序号" width="80" align="center">
+        <template slot-scope="scope">
+          {{ (queryParams.pageNum - 1) * queryParams.pageSize + scope.$index + 1 }}
+        </template>
+      </el-table-column>
       <el-table-column label="患者姓名" prop="name" min-width="120" />
-      <el-table-column label="病历号" prop="medicalRecordNo" min-width="160" />
-      <el-table-column label="就诊医院" prop="hospital" min-width="180" show-overflow-tooltip />
       <el-table-column label="联系电话" prop="phone" width="130" />
+      <el-table-column label="就诊医院" prop="hospital" min-width="180" show-overflow-tooltip />
+      <el-table-column label="病历号" prop="medicalRecordNo" min-width="160" />
       <el-table-column label="就诊日期" prop="visitTime" width="120">
         <template slot-scope="scope">{{ parseTime(scope.row.visitTime, '{y}-{m}-{d}') }}</template>
       </el-table-column>
@@ -335,15 +332,38 @@ export default {
   margin-bottom: 8px;
 }
 
-.quick-entry__link {
-  color: #2563eb;
-  word-break: break-all;
-}
-
 .quick-entry__actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.query-form {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.query-input {
+  width: 220px;
+  max-width: 100%;
+}
+
+.query-form__actions {
+  margin-right: 0;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .import-summary {
@@ -359,6 +379,23 @@ export default {
 @media (max-width: 768px) {
   .quick-entry__content {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .query-form {
+    display: block;
+  }
+
+  .query-form .el-form-item {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .query-input {
+    width: 100%;
+  }
+
+  .toolbar-row {
     align-items: flex-start;
   }
 }
