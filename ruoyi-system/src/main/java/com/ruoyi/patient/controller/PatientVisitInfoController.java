@@ -5,9 +5,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,18 @@ public class PatientVisitInfoController extends BaseController
     private static final String MOBILE_ACCOUNT_CREATE_BY = "mobile-submit";
     private static final String AUTO_PATIENT_PASSWORD = "123456";
     private static final String APPLY_STATUS_APPROVED = "1";
+    private static final List<String> TCM_DIAGNOSIS_OPTIONS = Arrays.asList(
+        "鼻鼽 风寒犯肺证",
+        "鼻鼽 风热犯肺证",
+        "鼻鼽 肺脾气虚证",
+        "鼻鼽 肺肾阳虚证"
+    );
+    private static final List<String> TCM_TREATMENT_OPTIONS = Arrays.asList(
+        "疏风散寒 宣通鼻窍",
+        "疏风清热 宣通鼻窍",
+        "补脾益肺 通窍散结",
+        "温补肺肾 通窍散结"
+    );
     private static final Map<String, BiConsumer<PatientVisitInfo, String>> IMAGE_HEADER_SETTERS = new HashMap<>();
     private static final Map<Integer, BiConsumer<PatientVisitInfo, String>> IMAGE_COLUMN_SETTERS = new HashMap<>();
 
@@ -184,6 +198,7 @@ public class PatientVisitInfoController extends BaseController
             {
                 normalizeImportPhone(info);
                 normalizeImportHospital(info);
+                normalizeImportTcmFields(info);
                 ensureImportPatientAccount(info, patientRoleId, importAccountCache);
                 info.setCreateBy(getUsername());
                 successCount += patientVisitInfoService.insertPatientVisitInfo(info);
@@ -1035,6 +1050,50 @@ public class PatientVisitInfoController extends BaseController
         if (StringUtils.isEmpty(hospital) && patientVisitInfo.getHospitalDeptId() == null)
         {
             patientVisitInfo.setHospital("其他医院");
+        }
+    }
+
+    private void normalizeImportTcmFields(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            return;
+        }
+        patientVisitInfo.setTcmDiagnosis(normalizePresetOption(patientVisitInfo.getTcmDiagnosis(), TCM_DIAGNOSIS_OPTIONS));
+        patientVisitInfo.setTcmTreatment(normalizePresetOption(patientVisitInfo.getTcmTreatment(), TCM_TREATMENT_OPTIONS));
+    }
+
+    private String normalizePresetOption(String value, List<String> options)
+    {
+        String trimmed = StringUtils.trim(value);
+        if (StringUtils.isEmpty(trimmed))
+        {
+            return value;
+        }
+        Long code = parseLong(trimmed);
+        if (code != null && code >= 1L && code <= options.size())
+        {
+            return options.get(code.intValue() - 1);
+        }
+        for (String option : options)
+        {
+            if (option.equals(trimmed))
+            {
+                return option;
+            }
+        }
+        return trimmed;
+    }
+
+    private Long parseLong(String value)
+    {
+        try
+        {
+            return new BigDecimal(value).longValueExact();
+        }
+        catch (ArithmeticException | NumberFormatException ex)
+        {
+            return null;
         }
     }
 

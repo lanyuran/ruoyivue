@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="修改鼻炎患者就诊信息"
+    title="修改患者就诊信息"
     :visible.sync="dialogVisible"
     width="900px"
     append-to-body
@@ -45,20 +45,29 @@
         <el-col :span="12">
           <el-form-item label="就诊医院">
             <el-select
-              v-model="form.hospitalDeptId"
-              clearable
+              v-model="hospitalSelection"
               filterable
               placeholder="请选择就诊医院"
               style="width: 100%"
               @change="handleHospitalChange"
             >
-              <el-option v-for="item in hospitalOptions" :key="item.deptId" :label="item.deptName" :value="item.deptId" />
+              <el-option
+                v-for="item in hospitalOptions"
+                :key="item.deptId"
+                :label="item.deptName"
+                :value="String(item.deptId)"
+              />
+              <el-option label="其他医院" value="__OTHER__" />
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="12">
+        <el-col v-if="isOtherHospital" :span="12">
           <el-form-item label="其他医院">
-            <el-input v-model="hospitalOther" placeholder="没有可选医院时填写" @input="handleOtherHospitalInput" />
+            <el-input
+              v-model="hospitalOther"
+              placeholder="请输入医院名称"
+              @input="handleOtherHospitalInput"
+            />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -78,7 +87,7 @@
         </el-col>
       </el-row>
 
-      <el-form-item label="既往用药史">
+      <el-form-item label="既往用药">
         <el-input v-model="form.pastMedication" type="textarea" :rows="2" />
       </el-form-item>
       <el-form-item label="主诉" prop="chiefComplaint">
@@ -111,19 +120,39 @@
       </el-row>
 
       <el-form-item label="舌象照片">
-        <image-upload-card :file-list.sync="tongueImageList" @success="res => handleUploadSuccess(res, 'tongueImagePath')" @remove="() => handleRemove('tongueImagePath')" />
+        <image-upload-card
+          :file-list.sync="tongueImageList"
+          @success="res => handleUploadSuccess(res, 'tongueImagePath')"
+          @remove="() => handleRemove('tongueImagePath')"
+        />
       </el-form-item>
       <el-form-item label="血常规报告">
-        <image-upload-card :file-list.sync="bloodTestImageList" @success="res => handleUploadSuccess(res, 'bloodTestImagePath')" @remove="() => handleRemove('bloodTestImagePath')" />
+        <image-upload-card
+          :file-list.sync="bloodTestImageList"
+          @success="res => handleUploadSuccess(res, 'bloodTestImagePath')"
+          @remove="() => handleRemove('bloodTestImagePath')"
+        />
       </el-form-item>
       <el-form-item label="炎症因子报告">
-        <image-upload-card :file-list.sync="inflammationImageList" @success="res => handleUploadSuccess(res, 'inflammationImagePath')" @remove="() => handleRemove('inflammationImagePath')" />
+        <image-upload-card
+          :file-list.sync="inflammationImageList"
+          @success="res => handleUploadSuccess(res, 'inflammationImagePath')"
+          @remove="() => handleRemove('inflammationImagePath')"
+        />
       </el-form-item>
       <el-form-item label="肝肾功能">
-        <image-upload-card :file-list.sync="liverKidneyImageList" @success="res => handleUploadSuccess(res, 'liverKidneyImagePath')" @remove="() => handleRemove('liverKidneyImagePath')" />
+        <image-upload-card
+          :file-list.sync="liverKidneyImageList"
+          @success="res => handleUploadSuccess(res, 'liverKidneyImagePath')"
+          @remove="() => handleRemove('liverKidneyImagePath')"
+        />
       </el-form-item>
       <el-form-item label="肾早期损伤">
-        <image-upload-card :file-list.sync="renalInjuryImageList" @success="res => handleUploadSuccess(res, 'renalInjuryImagePath')" @remove="() => handleRemove('renalInjuryImagePath')" />
+        <image-upload-card
+          :file-list.sync="renalInjuryImageList"
+          @success="res => handleUploadSuccess(res, 'renalInjuryImagePath')"
+          @remove="() => handleRemove('renalInjuryImagePath')"
+        />
       </el-form-item>
 
       <el-form-item label="中医诊断" prop="tcmDiagnosis">
@@ -137,7 +166,11 @@
         </el-radio-group>
       </el-form-item>
       <el-form-item label="中药处方照片">
-        <image-upload-card :file-list.sync="tcmTreatmentImageList" @success="res => handleUploadSuccess(res, 'tcmTreatmentImagePath')" @remove="() => handleRemove('tcmTreatmentImagePath')" />
+        <image-upload-card
+          :file-list.sync="tcmTreatmentImageList"
+          @success="res => handleUploadSuccess(res, 'tcmTreatmentImagePath')"
+          @remove="() => handleRemove('tcmTreatmentImagePath')"
+        />
       </el-form-item>
       <el-form-item label="中医外治处方" prop="tcmExternalPrescription">
         <el-input v-model="form.tcmExternalPrescription" type="textarea" :rows="2" />
@@ -145,8 +178,8 @@
     </el-form>
 
     <div slot="footer" class="dialog-footer">
-      <el-button type="primary" :loading="saving" @click="submitForm">保 存</el-button>
-      <el-button @click="dialogVisible = false">取 消</el-button>
+      <el-button type="primary" :loading="saving" @click="submitForm">保存</el-button>
+      <el-button @click="dialogVisible = false">取消</el-button>
     </div>
   </el-dialog>
 </template>
@@ -154,6 +187,8 @@
 <script>
 import { getInformation, updateInformation, listHospitalOptions } from '@/api/patient/information'
 import ImageUploadCard from './ImageUploadCard'
+
+const OTHER_HOSPITAL_VALUE = '__OTHER__'
 
 export default {
   name: 'VisitEditDialog',
@@ -174,6 +209,7 @@ export default {
     return {
       saving: false,
       hospitalOptions: [],
+      hospitalSelection: null,
       hospitalOther: '',
       tcmDiagnosisOptions: ['鼻鼽 风寒犯肺证', '鼻鼽 风热犯肺证', '鼻鼽 肺脾气虚证', '鼻鼽 肺肾阳虚证'],
       tcmTreatmentOptions: ['疏风散寒 宣通鼻窍', '疏风清热 宣通鼻窍', '补脾益肺 通窍散结', '温补肺肾 通窍散结'],
@@ -191,7 +227,7 @@ export default {
         chiefComplaint: [{ required: true, message: '请输入主诉', trigger: 'blur' }],
         mainSymptom: [{ required: true, message: '请输入主证', trigger: 'blur' }],
         physicalExam: [{ required: true, message: '请输入体格检查', trigger: 'blur' }],
-        tonguePulse: [{ required: true, message: '请输入舌脉情况', trigger: 'blur' }],
+        tonguePulse: [{ required: true, message: '请输入舌脉', trigger: 'blur' }],
         tcmDiagnosis: [{ required: true, message: '请选择中医诊断', trigger: 'change' }],
         tcmTreatment: [{ required: true, message: '请选择中医治法', trigger: 'change' }],
         tcmExternalPrescription: [{ required: true, message: '请输入中医外治处方', trigger: 'blur' }]
@@ -212,6 +248,9 @@ export default {
       set(value) {
         this.$emit('update:visible', value)
       }
+    },
+    isOtherHospital() {
+      return this.hospitalSelection === OTHER_HOSPITAL_VALUE
     }
   },
   watch: {
@@ -271,44 +310,87 @@ export default {
     },
     loadHospitalOptions() {
       return listHospitalOptions().then(response => {
-        this.hospitalOptions = response.data || []
+        this.hospitalOptions = Array.isArray(response.data) ? response.data : []
       }).catch(() => {
         this.hospitalOptions = []
       })
     },
     syncHospitalSelection() {
-      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
-      this.hospitalOther = selected ? '' : (this.form.hospital || '')
+      const selected = this.findSelectedHospitalOption(this.form.hospitalDeptId, this.form.hospital)
+      if (selected) {
+        this.hospitalSelection = String(selected.deptId)
+        this.form.hospitalDeptId = selected.deptId
+        this.form.hospital = selected.deptName
+        this.hospitalOther = ''
+        return
+      }
+      if (this.form.hospital) {
+        this.hospitalSelection = OTHER_HOSPITAL_VALUE
+        this.form.hospitalDeptId = null
+        this.hospitalOther = this.form.hospital
+        return
+      }
+      this.hospitalSelection = null
+      this.hospitalOther = ''
     },
     handleHospitalChange(value) {
-      const selected = this.hospitalOptions.find(item => item.deptId === value)
-      this.form.hospital = selected ? selected.deptName : null
-      if (selected) {
-        this.hospitalOther = ''
+      if (value === OTHER_HOSPITAL_VALUE) {
+        this.form.hospitalDeptId = null
+        this.form.hospital = this.getTrimmedHospitalOther() || null
+        return
       }
+      const selected = this.hospitalOptions.find(item => String(item.deptId) === String(value))
+      this.form.hospitalDeptId = selected ? selected.deptId : null
+      this.form.hospital = selected ? selected.deptName : null
+      this.hospitalOther = ''
     },
     handleOtherHospitalInput(value) {
-      const val = value ? value.trim() : ''
-      if (val) {
-        this.form.hospital = val
-        this.form.hospitalDeptId = null
+      const normalized = value ? value.trim() : ''
+      this.form.hospitalDeptId = null
+      this.form.hospital = normalized || null
+    },
+    findSelectedHospitalOption(deptId, hospitalName) {
+      if (deptId !== undefined && deptId !== null && deptId !== '') {
+        const byDeptId = this.hospitalOptions.find(item => String(item.deptId) === String(deptId))
+        if (byDeptId) {
+          return byDeptId
+        }
       }
+      const normalizedHospitalName = hospitalName ? hospitalName.trim() : ''
+      if (!normalizedHospitalName) {
+        return null
+      }
+      return this.hospitalOptions.find(item => item.deptName === normalizedHospitalName) || null
+    },
+    getTrimmedHospitalOther() {
+      return this.hospitalOther ? this.hospitalOther.trim() : ''
     },
     normalizeHospitalInput() {
-      const selected = this.hospitalOptions.find(item => item.deptId === this.form.hospitalDeptId)
+      if (this.hospitalSelection === OTHER_HOSPITAL_VALUE) {
+        const otherHospital = this.getTrimmedHospitalOther()
+        this.form.hospitalDeptId = null
+        this.form.hospital = otherHospital || null
+        return
+      }
+      const selected = this.hospitalOptions.find(item => String(item.deptId) === String(this.hospitalSelection))
       if (selected) {
+        this.form.hospitalDeptId = selected.deptId
         this.form.hospital = selected.deptName
         return
       }
-      const val = this.hospitalOther ? this.hospitalOther.trim() : ''
-      this.form.hospital = val || this.form.hospital
+      this.form.hospitalDeptId = null
+      this.form.hospital = null
     },
     submitForm() {
       this.normalizeHospitalInput()
+      if (this.hospitalSelection === OTHER_HOSPITAL_VALUE && !this.getTrimmedHospitalOther()) {
+        this.$modal.msgError('请输入医院名称')
+        return
+      }
       this.$refs.form.validate(valid => {
         if (!valid) return
         if (!this.form.visitId) {
-          this.$modal.msgError('缺少就诊记录ID，无法保存')
+          this.$modal.msgError('缺少就诊记录 ID，无法保存')
           return
         }
         this.saving = true
@@ -359,6 +441,7 @@ export default {
     },
     handleClose() {
       this.form = this.emptyForm()
+      this.hospitalSelection = null
       this.hospitalOther = ''
       this.initImageLists()
       this.clearValidate()

@@ -42,6 +42,18 @@ import com.ruoyi.system.service.ISysUserService;
 @Service
 public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
 {
+    private static final List<String> TCM_DIAGNOSIS_OPTIONS = Arrays.asList(
+        "鼻鼽 风寒犯肺证",
+        "鼻鼽 风热犯肺证",
+        "鼻鼽 肺脾气虚证",
+        "鼻鼽 肺肾阳虚证"
+    );
+    private static final List<String> TCM_TREATMENT_OPTIONS = Arrays.asList(
+        "疏风散寒 宣通鼻窍",
+        "疏风清热 宣通鼻窍",
+        "补脾益肺 通窍散结",
+        "温补肺肾 通窍散结"
+    );
     private static final DateTimeFormatter AUTO_RECORD_NO_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
     private static final String ROLE_KEY_PATIENT = "user";
     private static final String ROLE_KEY_DOCTOR = "doctor";
@@ -85,6 +97,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     {
         PatientVisitInfo patientVisitInfo = patientVisitInfoMapper.selectPatientVisitInfoByVisitId(visitId);
         normalizeHospitalDisplay(patientVisitInfo);
+        normalizeTcmDisplay(patientVisitInfo);
         return patientVisitInfo;
     }
 
@@ -104,6 +117,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
             for (PatientVisitInfo info : list)
             {
                 normalizeHospitalDisplay(info);
+                normalizeTcmDisplay(info);
             }
         }
         return list;
@@ -163,6 +177,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     {
         applyDefaultFillTime(patientVisitInfo);
         applyHospitalInfoOnCreate(patientVisitInfo);
+        normalizeTcmFields(patientVisitInfo);
         syncPatientRelation(patientVisitInfo);
         validateVisitSubmission(patientVisitInfo);
         try
@@ -186,6 +201,7 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
     {
         applyExistingFillTimeOnUpdate(patientVisitInfo);
         applyHospitalInfoOnCreate(patientVisitInfo);
+        normalizeTcmFields(patientVisitInfo);
         syncPatientRelation(patientVisitInfo);
         validateVisitSubmission(patientVisitInfo);
         try
@@ -1196,6 +1212,43 @@ public class PatientVisitInfoServiceImpl implements IPatientVisitInfoService
             if (presetHospital.equals(trimmed))
             {
                 return presetHospital;
+            }
+        }
+        return trimmed;
+    }
+
+    private void normalizeTcmFields(PatientVisitInfo patientVisitInfo)
+    {
+        if (patientVisitInfo == null)
+        {
+            return;
+        }
+        patientVisitInfo.setTcmDiagnosis(normalizePresetOption(patientVisitInfo.getTcmDiagnosis(), TCM_DIAGNOSIS_OPTIONS));
+        patientVisitInfo.setTcmTreatment(normalizePresetOption(patientVisitInfo.getTcmTreatment(), TCM_TREATMENT_OPTIONS));
+    }
+
+    private void normalizeTcmDisplay(PatientVisitInfo patientVisitInfo)
+    {
+        normalizeTcmFields(patientVisitInfo);
+    }
+
+    private String normalizePresetOption(String value, List<String> options)
+    {
+        String trimmed = trimToNull(value);
+        if (trimmed == null)
+        {
+            return null;
+        }
+        Long presetCode = parseLong(trimmed);
+        if (presetCode != null && presetCode >= 1L && presetCode <= options.size())
+        {
+            return options.get(presetCode.intValue() - 1);
+        }
+        for (String option : options)
+        {
+            if (option.equals(trimmed))
+            {
+                return option;
             }
         }
         return trimmed;
